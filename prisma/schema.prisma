@@ -9,39 +9,39 @@ datasource db {
   extensions = [postgis]
 }
 
-model Seller {
-  id          Int          @id @default(autoincrement())
-  code        Int          @unique
-  fullName    String
-  territories Territory[]
+model Vendedor {
+  id             Int          @id @default(autoincrement())
+  codigo         Int          @unique
+  nombreCompleto String       @map("nombre_completo")
+  territorios    Territorio[]
 
-  @@map("sellers")
+  @@map("vendedores")
 }
 
-model SalesPoint {
-  id               String    @id
-  clientName       String
-  lastPurchaseDate DateTime?
-  longitude        Float
-  latitude         Float
-  annualAmount     Float?
-  currency         String    @default("S/")
-  territoryId      String?
-  territory        Territory? @relation(fields: [territoryId], references: [id])
+model PuntoVenta {
+  id            String      @id
+  nombreCliente String      @map("nombre_cliente")
+  ultimaCompra  DateTime?   @map("ultima_compra")
+  longitud      Float
+  latitud       Float
+  montoAnual    Float?      @map("monto_anual")
+  moneda        String      @default("S/")
+  territorioId  String?     @map("territorio_id")
+  territorio    Territorio? @relation(fields: [territorioId], references: [id])
 
-  @@index([longitude, latitude])
-  @@map("sales_points")
+  @@index([longitud, latitud])
+  @@map("puntos_venta")
 }
 
-model Territory {
+model Territorio {
   id          String       @id @default(cuid())
-  name        String
+  nombre      String
   color       String
-  sellerId    Int
-  seller      Seller       @relation(fields: [sellerId], references: [id])
-  geoJson     Json
-  salesPoints SalesPoint[]
-  createdAt   DateTime     @default(now())
+  vendedorId  Int          @map("vendedor_id")
+  vendedor    Vendedor     @relation(fields: [vendedorId], references: [id])
+  geoJson     Json         @map("geo_json")
+  puntosVenta PuntoVenta[]
+  creadoEn    DateTime     @default(now()) @map("creado_en")
 
-  @@map("territories")
+  @@map("territorios")
 }

@@ -94,7 +94,7 @@ export function useGeoData() {
   const saveTerritoriesFromWorker = useCallback(
     async (
       assignments: {
-        sellerId: number
+        vendedorId: number
         points: SalesPoint[]
         polygon: GeoJSON.Feature<GeoJSON.Polygon> | null
       }[]
@@ -106,7 +106,7 @@ export function useGeoData() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             assignments: valid.map((a, idx) => ({
-              sellerId: a.sellerId,
+              vendedorId: a.vendedorId,
               pointIds: a.points.map((p) => p.id),
               geoJson: a.polygon,
               colorIndex: idx,

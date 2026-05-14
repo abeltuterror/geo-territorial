@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db"
 
 export async function GET() {
   try {
-    const sellers = await prisma.seller.findMany({
-      orderBy: { code: "asc" },
+    const sellers = await prisma.vendedor.findMany({
+      orderBy: { codigo: "asc" },
     })
     return NextResponse.json(sellers)
   } catch (error) {

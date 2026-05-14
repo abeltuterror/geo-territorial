@@ -49,8 +49,7 @@ geo1/
 │   └── geo.worker.ts              # K-means, convex hull, filtro radio (R-tree)
 └── prisma/
     ├── schema.prisma              # Modelos: Seller, SalesPoint, Territory
-    ├── seed.ts                    # Carga 90 vendedores
-    ├── load-points.ts             # Importa 18 763 puntos desde puntos.xlsx
+    ├── seed.ts                    # Carga vendedores + 18 763 puntos desde puntos.xlsx
     └── data/puntos.xlsx           # Fuente de datos (no versionar si es grande)
 ```
 
@@ -59,15 +58,20 @@ geo1/
 ## Modelos de datos
 
 ```prisma
-model Seller        { id, code (unique), fullName, territories[] }
-model SalesPoint    { id, clientName, latitude, longitude, annualAmount,
-                      currency, lastPurchaseDate, territoryId? }
-model Territory     { id, name, color, sellerId, geoJson (GeoJSON Polygon),
-                      salesPoints[], createdAt }
+model Vendedor   { id, codigo (unique), nombreCompleto, territorios[] }
+                   → tabla: vendedores
+
+model PuntoVenta { id, nombreCliente, latitud, longitud, montoAnual,
+                   moneda, ultimaCompra, territorioId? }
+                   → tabla: puntos_venta
+
+model Territorio { id, nombre, color, vendedorId, geoJson (GeoJSON Polygon),
+                   puntosVenta[], creadoEn }
+                   → tabla: territorios
 ```
 
 - `geoJson` se guarda como `Json` (no columna espacial PostGIS) — compatible con Deck.gl directo.
-- Índice compuesto `[longitude, latitude]` en `SalesPoint` para consultas de proximidad.
+- Índice compuesto `[longitud, latitud]` en `PuntoVenta` para consultas de proximidad.
 
 ---
 
@@ -111,10 +115,10 @@ TerritoryPanel.tsx
 | Ruta | Método | Comportamiento |
 |------|--------|---------------|
 | `/api/points` | GET | Todos los puntos; `Cache-Control: s-maxage=300` |
-| `/api/sellers` | GET | Vendedores ordenados por `code` |
-| `/api/territories` | GET | Territorios con seller y salesPoints anidados |
-| `/api/territories` | POST | Body: `{ assignments[] }` — limpia anteriores, crea nuevos, actualiza `territoryId` en puntos |
-| `/api/territories` | DELETE | Resetea todos los `territoryId` a null y borra territorios |
+| `/api/sellers` | GET | Vendedores ordenados por `codigo` |
+| `/api/territories` | GET | Territorios con vendedor y puntosVenta anidados |
+| `/api/territories` | POST | Body: `{ assignments[] }` — limpia anteriores, crea nuevos, actualiza `territorioId` en puntos |
+| `/api/territories` | DELETE | Resetea todos los `territorioId` a null y borra territorios |
 
 ---
 
@@ -134,9 +138,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""           # Requerida para SearchBar
 npm run dev              # Servidor de desarrollo (Turbopack)
 npm run build            # prisma generate + next build
 npm run db:migrate       # Aplica migraciones pendientes
-npm run db:seed          # Carga 90 vendedores
-npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/load-points.ts
-                         # Importa 18 763 puntos desde puntos.xlsx
+npm run db:seed          # Carga vendedores + 18 763 puntos desde puntos.xlsx
 npm run db:studio        # Prisma Studio en http://localhost:5555
 psql postgresql://geo_user:geo123@localhost:5432/geo_territorial
                          # Consola SQL directa

@@ -144,7 +144,7 @@ export default function TerritoryPanel({
         {showSellers && (
           <ul className="divide-y divide-gray-800">
             {sellers.map((seller) => {
-              const territory = territories.find((t) => t.sellerId === seller.id)
+              const territory = territories.find((t) => t.vendedorId === seller.id)
               const isSelected = selectedSellerIds.has(seller.id)
               return (
                 <li
@@ -170,16 +170,16 @@ export default function TerritoryPanel({
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-gray-200 text-xs font-medium truncate">
-                      {seller.fullName}
+                      {seller.nombreCompleto}
                     </p>
                     {territory && (
                       <p className="text-gray-500 text-xs">
-                        {territory.salesPoints.length} clientes
+                        {territory.puntosVenta.length} clientes
                       </p>
                     )}
                   </div>
                   <span className="text-gray-600 text-xs flex-shrink-0">
-                    #{seller.code}
+                    #{seller.codigo}
                   </span>
                 </li>
               )
@@ -198,7 +198,7 @@ export default function TerritoryPanel({
                 style={{ backgroundColor: selectedTerritory.color }}
               />
               <span className="text-white text-sm font-medium">
-                {selectedTerritory.seller.fullName}
+                {selectedTerritory.vendedor.nombreCompleto}
               </span>
             </div>
             <button
@@ -212,37 +212,37 @@ export default function TerritoryPanel({
             <div className="flex justify-between text-xs">
               <span className="text-gray-400">Clientes encerrados</span>
               <span className="text-white font-medium">
-                {selectedTerritory.salesPoints.length}
+                {selectedTerritory.puntosVenta.length}
               </span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-gray-400">Compra potencial total</span>
               <span className="text-green-400 font-medium">
                 {formatCurrency(
-                  selectedTerritory.salesPoints.reduce(
-                    (sum, p) => sum + (p.annualAmount ?? 0),
+                  selectedTerritory.puntosVenta.reduce(
+                    (sum, p) => sum + (p.montoAnual ?? 0),
                     0
                   )
                 )}
               </span>
             </div>
             <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-              {selectedTerritory.salesPoints.slice(0, 50).map((p) => (
+              {selectedTerritory.puntosVenta.slice(0, 50).map((p) => (
                 <div
                   key={p.id}
                   className="flex justify-between text-xs py-1 border-b border-gray-800"
                 >
                   <span className="text-gray-300 truncate max-w-[140px]">
-                    {p.clientName}
+                    {p.nombreCliente}
                   </span>
                   <span className="text-gray-500 ml-2 flex-shrink-0">
-                    {formatCurrency(p.annualAmount)}
+                    {formatCurrency(p.montoAnual)}
                   </span>
                 </div>
               ))}
-              {selectedTerritory.salesPoints.length > 50 && (
+              {selectedTerritory.puntosVenta.length > 50 && (
                 <p className="text-gray-600 text-xs text-center py-1">
-                  +{selectedTerritory.salesPoints.length - 50} más...
+                  +{selectedTerritory.puntosVenta.length - 50} más...
                 </p>
               )}
             </div>

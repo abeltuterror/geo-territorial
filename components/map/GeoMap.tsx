@@ -48,7 +48,7 @@ export default function GeoMap({
     const map = new Map<string, [number, number, number]>()
     territories.forEach((t) => {
       const rgb = hexToRgb(t.color)
-      t.salesPoints.forEach((sp) => map.set(sp.id, rgb))
+      t.puntosVenta.forEach((sp) => map.set(sp.id, rgb))
     })
     return map
   }, [territories])
@@ -58,7 +58,7 @@ export default function GeoMap({
       new ScatterplotLayer<SalesPoint>({
         id: "sales-points",
         data: visiblePoints,
-        getPosition: (d) => [d.longitude, d.latitude],
+        getPosition: (d) => [d.longitud, d.latitud],
         getFillColor: (d) => {
           const color = territoryColorMap.get(d.id)
           return color ? [...color, 220] : [160, 160, 160, 180]
@@ -115,10 +115,10 @@ export default function GeoMap({
         layers={layers}
         getTooltip={({ object }: PickingInfo<SalesPoint | Territory>) => {
           if (!object) return null
-          if ("clientName" in object) {
+          if ("nombreCliente" in object) {
             return {
-              html: `<div class="text-sm font-medium">${object.clientName}</div>
-                     <div class="text-xs text-gray-400">${object.annualAmount != null ? `S/ ${object.annualAmount.toLocaleString()}` : "Sin importe"}</div>`,
+              html: `<div class="text-sm font-medium">${object.nombreCliente}</div>
+                     <div class="text-xs text-gray-400">${object.montoAnual != null ? `S/ ${object.montoAnual.toLocaleString()}` : "Sin importe"}</div>`,
               style: { background: "#1e1e2e", border: "1px solid #444", borderRadius: "6px", padding: "6px 10px" },
             }
           }

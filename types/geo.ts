@@ -1,28 +1,28 @@
 export interface SalesPoint {
   id: string
-  clientName: string
-  lastPurchaseDate: string | null
-  longitude: number
-  latitude: number
-  annualAmount: number | null
-  currency: string
-  territoryId: string | null
+  nombreCliente: string
+  ultimaCompra: string | null
+  longitud: number
+  latitud: number
+  montoAnual: number | null
+  moneda: string
+  territorioId: string | null
 }
 
 export interface Seller {
   id: number
-  code: number
-  fullName: string
+  codigo: number
+  nombreCompleto: string
 }
 
 export interface Territory {
   id: string
-  name: string
+  nombre: string
   color: string
-  sellerId: number
-  seller: Seller
+  vendedorId: number
+  vendedor: Seller
   geoJson: GeoJSON.Feature<GeoJSON.Polygon>
-  salesPoints: SalesPoint[]
+  puntosVenta: SalesPoint[]
 }
 
 export interface TerritoryAssignmentParams {

@@ -3,16 +3,16 @@ import { prisma } from "@/lib/db"
 
 export async function GET() {
   try {
-    const points = await prisma.salesPoint.findMany({
+    const points = await prisma.puntoVenta.findMany({
       select: {
         id: true,
-        clientName: true,
-        lastPurchaseDate: true,
-        longitude: true,
-        latitude: true,
-        annualAmount: true,
-        currency: true,
-        territoryId: true,
+        nombreCliente: true,
+        ultimaCompra: true,
+        longitud: true,
+        latitud: true,
+        montoAnual: true,
+        moneda: true,
+        territorioId: true,
       },
       orderBy: { id: "asc" },
     })

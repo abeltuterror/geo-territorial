@@ -6,7 +6,7 @@ import { getTerritoryColor } from "@/lib/utils"
 const CreateTerritoriesSchema = z.object({
   assignments: z.array(
     z.object({
-      sellerId: z.number(),
+      vendedorId: z.number(),
       pointIds: z.array(z.string()),
       geoJson: z.any(),
       colorIndex: z.number(),
@@ -16,18 +16,18 @@ const CreateTerritoriesSchema = z.object({
 
 export async function GET() {
   try {
-    const territories = await prisma.territory.findMany({
+    const territories = await prisma.territorio.findMany({
       include: {
-        seller: true,
-        salesPoints: {
+        vendedor: true,
+        puntosVenta: {
           select: {
             id: true,
-            clientName: true,
-            annualAmount: true,
-            currency: true,
-            longitude: true,
-            latitude: true,
-            lastPurchaseDate: true,
+            nombreCliente: true,
+            montoAnual: true,
+            moneda: true,
+            longitud: true,
+            latitud: true,
+            ultimaCompra: true,
           },
         },
       },
@@ -45,22 +45,22 @@ export async function POST(req: Request) {
     const { assignments } = CreateTerritoriesSchema.parse(body)
 
     // Clear existing territories before saving new ones
-    await prisma.salesPoint.updateMany({ data: { territoryId: null } })
-    await prisma.territory.deleteMany()
+    await prisma.puntoVenta.updateMany({ data: { territorioId: null } })
+    await prisma.territorio.deleteMany()
 
     const created = await Promise.all(
       assignments.map(async (a, idx) => {
-        const territory = await prisma.territory.create({
+        const territory = await prisma.territorio.create({
           data: {
-            sellerId: a.sellerId,
-            name: `Territorio ${idx + 1}`,
+            vendedorId: a.vendedorId,
+            nombre: `Territorio ${idx + 1}`,
             color: getTerritoryColor(a.colorIndex),
             geoJson: a.geoJson,
           },
         })
-        await prisma.salesPoint.updateMany({
+        await prisma.puntoVenta.updateMany({
           where: { id: { in: a.pointIds } },
-          data: { territoryId: territory.id },
+          data: { territorioId: territory.id },
         })
         return territory
       })
@@ -78,8 +78,8 @@ export async function POST(req: Request) {
 
 export async function DELETE() {
   try {
-    await prisma.salesPoint.updateMany({ data: { territoryId: null } })
-    await prisma.territory.deleteMany()
+    await prisma.puntoVenta.updateMany({ data: { territorioId: null } })
+    await prisma.territorio.deleteMany()
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error("DELETE /api/territories error:", error)

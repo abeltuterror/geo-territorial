@@ -31,46 +31,62 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
 NEXT_PUBLIC_MAP_PROVIDER="maplibre"
 ```
 
-### 4. Crear tablas y cargar vendedores
-```bash
-npx prisma migrate dev --name init
+### 4. Colocar el archivo de datos
+Copiar el Excel en:
+```
+prisma/data/puntos.xlsx
 ```
 
-Este comando hace 3 cosas automáticamente:
-1. Crea todas las tablas en la BD según `prisma/schema.prisma`
-2. Registra la migración en `prisma/migrations/`
-3. Corre el seed (`prisma/seed.ts`) que inserta los 90 vendedores
-
-### 5. Verificar
+### 5. Crear tablas y cargar todos los datos
 ```bash
-sudo -u postgres psql -d geo_territorial -c "\dt"
+npx prisma migrate reset --force
+```
+
+Este comando hace todo automáticamente:
+1. Crea las tablas en la BD según `prisma/schema.prisma`
+2. Corre `prisma/seed.ts` que lee `puntos.xlsx` y carga:
+   - 90 vendedores (hoja "Vendedores")
+   - 18 763 puntos de venta (hoja "Geo puntos")
+
+### 6. Verificar
+```bash
+psql postgresql://geo_user:geo123@localhost:5432/geo_territorial -c "\dt"
 ```
 
 Deberías ver:
 ```
- Schema |      Name       | Type  |  Owner
---------+-----------------+-------+----------
- public | sellers         | table | geo_user
- public | sales_points    | table | geo_user
- public | territories     | table | geo_user
+ Schema |        Name        | Type  |  Owner
+--------+--------------------+-------+----------
  public | _prisma_migrations | table | geo_user
+ public | puntos_venta       | table | geo_user
+ public | spatial_ref_sys    | table | geo_user
+ public | territorios        | table | geo_user
+ public | vendedores         | table | geo_user
 ```
+
+> **`spatial_ref_sys`** es una tabla interna de PostGIS. Se crea automáticamente al activar la extensión y no pertenece al proyecto — no la toques.
 
 ## Comandos útiles
 
 ```bash
 # Entrar a la BD
-psql -U geo_user -d geo_territorial -h localhost
+psql postgresql://geo_user:geo123@localhost:5432/geo_territorial
 
 # Ver tablas
 \dt
 
-# Ver vendedores cargados
-SELECT COUNT(*) FROM sellers;
+# Ver columnas de una tabla
+\d vendedores
+\d puntos_venta
+\d territorios
+
+# Contar registros
+SELECT COUNT(*) FROM vendedores;
+SELECT COUNT(*) FROM puntos_venta;
 
 # Abrir Prisma Studio (UI visual de la BD)
 npm run db:studio
 
-# Resetear la BD (borra todo y vuelve a empezar)
+# Resetear la BD completa (borra todo y recarga desde el Excel)
 npx prisma migrate reset --force
 ```

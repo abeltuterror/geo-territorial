@@ -19,7 +19,7 @@ interface WorkerMessage {
 interface AssignTerritoriesPayload {
   points: SalesPoint[]
   params: TerritoryAssignmentParams
-  allSellers: { id: number; code: number; fullName: string }[]
+  allSellers: { id: number; codigo: number; nombreCompleto: string }[]
 }
 
 interface FilterRadiusPayload {
@@ -37,8 +37,8 @@ function kMeansClustering(
   // Initialize centroids by spreading across the point set
   const step = Math.floor(points.length / k)
   let centroids = Array.from({ length: k }, (_, i) => ({
-    lng: points[i * step].longitude,
-    lat: points[i * step].latitude,
+    lng: points[i * step].longitud,
+    lat: points[i * step].latitud,
   }))
 
   let assignments = new Array(points.length).fill(0)
@@ -49,7 +49,7 @@ function kMeansClustering(
       let minDist = Infinity
       let nearest = 0
       centroids.forEach((c, ci) => {
-        const d = Math.pow(p.longitude - c.lng, 2) + Math.pow(p.latitude - c.lat, 2)
+        const d = Math.pow(p.longitud - c.lng, 2) + Math.pow(p.latitud - c.lat, 2)
         if (d < minDist) { minDist = d; nearest = ci }
       })
       return nearest
@@ -65,8 +65,8 @@ function kMeansClustering(
       const cluster = points.filter((_, i) => assignments[i] === ci)
       if (cluster.length === 0) return centroids[ci]
       return {
-        lng: cluster.reduce((s, p) => s + p.longitude, 0) / cluster.length,
-        lat: cluster.reduce((s, p) => s + p.latitude, 0) / cluster.length,
+        lng: cluster.reduce((s, p) => s + p.longitud, 0) / cluster.length,
+        lat: cluster.reduce((s, p) => s + p.latitud, 0) / cluster.length,
       }
     })
   }
@@ -78,7 +78,7 @@ function kMeansClustering(
 function buildPolygon(points: SalesPoint[]): turf.Feature<turf.Polygon> | null {
   if (points.length < 3) return null
   const fc = turf.featureCollection(
-    points.map((p) => turf.point([p.longitude, p.latitude]))
+    points.map((p) => turf.point([p.longitud, p.latitud]))
   ) as FeatureCollection<Point>
   const hull = turf.convex(fc)
   if (!hull) return null
@@ -108,8 +108,8 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       const seller = allSellers.find((s) => s.id === sellerId)!
 
       return {
-        sellerId,
-        sellerName: seller.fullName,
+        vendedorId: sellerId,
+        sellerName: seller.nombreCompleto,
         points: clusterPoints,
         polygon,
       }
@@ -126,10 +126,10 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     const tree = new RBush<RBushItem>()
     tree.load(
       points.map((p) => ({
-        minX: p.longitude,
-        minY: p.latitude,
-        maxX: p.longitude,
-        maxY: p.latitude,
+        minX: p.longitud,
+        minY: p.latitud,
+        maxX: p.longitud,
+        maxY: p.latitud,
         id: p.id,
       }))
     )
@@ -148,7 +148,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     const filtered = candidates
       .map((c) => points.find((p) => p.id === c.id)!)
       .filter((p) => {
-        const dist = turf.distance(centerPt, turf.point([p.longitude, p.latitude]), {
+        const dist = turf.distance(centerPt, turf.point([p.longitud, p.latitud]), {
           units: "kilometers",
         })
         return dist <= radiusKm

@@ -1,7 +1,7 @@
 import * as turf from "@turf/turf"
 import RBush from "rbush"
 import type { SalesPoint, TerritoryAssignmentParams } from "@/types/geo"
-import type { Feature, Point, FeatureCollection } from "geojson"
+import type { Feature, Point, Polygon, FeatureCollection } from "geojson"
 
 interface RBushItem {
   minX: number
@@ -38,15 +38,14 @@ function pickRandomSeeds(points: SalesPoint[], k: number): SalesPoint[] {
 }
 
 // ── Build convex hull polygon from a set of points ───────────────────────────
-function buildPolygon(points: SalesPoint[]): turf.Feature<turf.Polygon> | null {
+function buildPolygon(points: SalesPoint[]): Feature<Polygon> | null {
   if (points.length < 3) return null
   const fc = turf.featureCollection(
     points.map((p) => turf.point([p.longitud, p.latitud]))
   ) as FeatureCollection<Point>
   const hull = turf.convex(fc)
   if (!hull) return null
-  // Buffer slightly so points on the edge are included
-  return turf.buffer(hull, 0.05, { units: "kilometers" }) as turf.Feature<turf.Polygon>
+  return turf.buffer(hull, 0.05, { units: "kilometers" }) as Feature<Polygon>
 }
 
 // ── Main message handler ──────────────────────────────────────────────────────

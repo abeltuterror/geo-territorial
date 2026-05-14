@@ -1,7 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Search, X } from "lucide-react"
+
+interface Prediction {
+  placeId: string
+  description: string
+  placePrediction: any
+}
 
 interface SearchBarProps {
   onLocationSelect: (center: [number, number], name: string) => void
@@ -10,71 +16,120 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ onLocationSelect, onClear, isFiltered }: SearchBarProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
-  const [value, setValue] = useState("")
   const [hasGoogle, setHasGoogle] = useState(false)
+  const [input, setInput] = useState("")
+  const [predictions, setPredictions] = useState<Prediction[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // Check if Google Maps API is loaded
-    if (typeof window !== "undefined" && (window as any).google?.maps?.places) {
-      setHasGoogle(true)
-    }
+    const check = () => !!(window as any).google?.maps?.places?.AutocompleteSuggestion
+    if (check()) { setHasGoogle(true); return }
+    const interval = setInterval(() => {
+      if (check()) { setHasGoogle(true); clearInterval(interval) }
+    }, 200)
+    return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    if (!hasGoogle || !inputRef.current) return
+  const handleInput = useCallback((value: string) => {
+    setInput(value)
+    if (debounce.current) clearTimeout(debounce.current)
+    if (!value.trim()) { setPredictions([]); setShowDropdown(false); return }
 
-    autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-      types: ["geocode", "establishment"],
-      componentRestrictions: { country: "pe" },
-    })
-
-    autocompleteRef.current.addListener("place_changed", () => {
-      const place = autocompleteRef.current!.getPlace()
-      if (!place.geometry?.location) return
-      const lng = place.geometry.location.lng()
-      const lat = place.geometry.location.lat()
-      setValue(place.name ?? place.formatted_address ?? "")
-      onLocationSelect([lng, lat], place.formatted_address ?? "")
-    })
-
-    return () => {
-      if (autocompleteRef.current) {
-        google.maps.event.clearInstanceListeners(autocompleteRef.current)
+    debounce.current = setTimeout(async () => {
+      try {
+        const { suggestions } = await (window as any).google.maps.places.AutocompleteSuggestion
+          .fetchAutocompleteSuggestions({ input: value, includedRegionCodes: ["pe"] })
+        if (suggestions?.length) {
+          setPredictions(suggestions.map((s: any) => ({
+            placeId: s.placePrediction.placeId,
+            description: s.placePrediction.text.toString(),
+            placePrediction: s.placePrediction,
+          })))
+          setShowDropdown(true)
+        } else {
+          setPredictions([])
+          setShowDropdown(false)
+        }
+      } catch {
+        setPredictions([])
+        setShowDropdown(false)
       }
+    }, 300)
+  }, [])
+
+  const handleSelect = useCallback(async (p: Prediction) => {
+    setInput(p.description)
+    setShowDropdown(false)
+    setPredictions([])
+    try {
+      const place = p.placePrediction.toPlace()
+      await place.fetchFields({ fields: ["location", "displayName"] })
+      if (place.location) {
+        const lat: number = place.location.lat()
+        const lng: number = place.location.lng()
+        onLocationSelect([lng, lat], place.displayName ?? p.description)
+      }
+    } catch {
+      // silent — user can retry
     }
-  }, [hasGoogle, onLocationSelect])
+  }, [onLocationSelect])
 
   const handleClear = () => {
-    setValue("")
+    setInput("")
+    setPredictions([])
+    setShowDropdown(false)
     onClear()
-    inputRef.current?.focus()
+  }
+
+  if (!hasGoogle) {
+    return (
+      <div className="w-72 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-gray-500 text-sm opacity-50 cursor-not-allowed">
+        API Key de Google Maps requerida...
+      </div>
+    )
   }
 
   return (
-    <div className="relative flex items-center">
-      <Search className="absolute left-3 w-4 h-4 text-gray-400 pointer-events-none" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={
-          hasGoogle
-            ? "Buscar ubicación (radio 3km)..."
-            : "API Key de Google Maps requerida..."
-        }
-        disabled={!hasGoogle}
-        className="w-72 pl-9 pr-8 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      />
-      {isFiltered && (
-        <button
-          onClick={handleClear}
-          className="absolute right-2 text-gray-400 hover:text-white"
-        >
-          <X className="w-4 h-4" />
-        </button>
+    <div className="relative w-72">
+      <div className="relative flex items-center">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => handleInput(e.target.value)}
+          onFocus={() => predictions.length > 0 && setShowDropdown(true)}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+          placeholder="Buscar ubicación (radio 3km)..."
+          className="w-full pl-3 pr-16 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        />
+        <div className="absolute right-2 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => { if (predictions.length > 0) handleSelect(predictions[0]) }}
+            className="text-gray-400 hover:text-white focus:outline-none"
+            tabIndex={-1}
+          >
+            <Search className="w-4 h-4" />
+          </button>
+          {input && (
+            <button onClick={handleClear} className="text-gray-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+      {showDropdown && (
+        <ul className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg overflow-hidden z-50 shadow-xl">
+          {predictions.map((p) => (
+            <li
+              key={p.placeId}
+              onMouseDown={() => handleSelect(p)}
+              className="px-3 py-2.5 text-sm text-gray-200 hover:bg-gray-700 cursor-pointer truncate"
+            >
+              {p.description}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

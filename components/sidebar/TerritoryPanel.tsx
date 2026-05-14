@@ -227,17 +227,23 @@ export default function TerritoryPanel({
               </span>
             </div>
             <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-              {selectedTerritory.puntosVenta.slice(0, 50).map((p) => (
+              {[...selectedTerritory.puntosVenta]
+                .sort((a, b) => (b.montoAnual ?? 0) - (a.montoAnual ?? 0))
+                .slice(0, 50)
+                .map((p) => (
                 <div
                   key={p.id}
-                  className="flex justify-between text-xs py-1 border-b border-gray-800"
+                  className="flex flex-col py-1 border-b border-gray-800 gap-0.5"
                 >
-                  <span className="text-gray-300 truncate max-w-[140px]">
-                    {p.nombreCliente}
-                  </span>
-                  <span className="text-gray-500 ml-2 flex-shrink-0">
-                    {formatCurrency(p.montoAnual)}
-                  </span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-300 truncate max-w-37.5 text-xs">
+                      {p.nombreCliente}
+                    </span>
+                    <span className="text-gray-500 ml-2 shrink-0 text-xs">
+                      {formatCurrency(p.montoAnual, p.moneda)}
+                    </span>
+                  </div>
+                  <span className="text-gray-600 text-[10px]">ID: {p.id}</span>
                 </div>
               ))}
               {selectedTerritory.puntosVenta.length > 50 && (

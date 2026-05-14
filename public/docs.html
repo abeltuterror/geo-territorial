@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geo Territorial — Documentación Técnica</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #4f8ef7;
+      --accent2: #7c3aed;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --code-bg: #0d1117;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .wrapper { max-width: 900px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      padding: 56px 0 40px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+    header .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #e2e8f0 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--muted);
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+
+    /* ── Sections ────────────────────────────────────────────── */
+    section { margin-bottom: 56px; }
+
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 24px 0 10px; }
+
+    p { color: var(--muted); margin-bottom: 12px; }
+    p strong { color: var(--text); }
+
+    /* ── Cards ───────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-weight: 700;
+      color: var(--text);
+      font-size: .95rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card p { margin-bottom: 0; font-size: .9rem; }
+
+    /* ── Grid ────────────────────────────────────────────────── */
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+    /* ── Stat blocks ─────────────────────────────────────────── */
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat .val {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat .label { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── Code ────────────────────────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #c9d1d9;
+      margin: 16px 0;
+    }
+    pre .kw { color: #ff7b72; }
+    pre .fn { color: #d2a8ff; }
+    pre .str { color: #a5d6ff; }
+    pre .cmt { color: #8b949e; }
+    pre .num { color: #79c0ff; }
+
+    /* ── Table ───────────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+      margin: 16px 0;
+    }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface2);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: .78rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    td strong { color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    /* ── Pill tags ───────────────────────────────────────────── */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .tag-blue  { background: #1e3a5f; color: var(--accent); }
+    .tag-green { background: #0d3325; color: var(--green); }
+    .tag-yellow{ background: #3d2e00; color: var(--yellow); }
+    .tag-red   { background: #3d1010; color: var(--red); }
+    .tag-purple{ background: #2d1a4f; color: #c084fc; }
+
+    /* ── Timeline ────────────────────────────────────────────── */
+    .timeline { list-style: none; position: relative; padding-left: 24px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: var(--border);
+    }
+    .timeline li {
+      position: relative;
+      margin-bottom: 20px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .timeline li::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 7px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .timeline li strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    /* ── Alert ───────────────────────────────────────────────── */
+    .alert {
+      border-left: 3px solid var(--accent);
+      background: rgba(79,142,247,.07);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      font-size: .9rem;
+      color: var(--muted);
+      margin: 16px 0;
+    }
+    .alert strong { color: var(--text); }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 32px;
+      color: var(--muted);
+      font-size: .85rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ── Header ──────────────────────────────────────────────── -->
+  <header>
+    <div class="badge">Documentación Técnica</div>
+    <h1>Geo Territorial</h1>
+    <p>Plataforma de segmentación y visualización de 18 763 puntos de venta en Lima — reto técnico</p>
+  </header>
+
+  <!-- ── Stats ───────────────────────────────────────────────── -->
+  <section>
+    <div class="grid grid-3">
+      <div class="stat"><div class="val">18 763</div><div class="label">Puntos de venta</div></div>
+      <div class="stat"><div class="val">90</div><div class="label">Vendedores</div></div>
+      <div class="stat"><div class="val">60 fps</div><div class="label">Render WebGL</div></div>
+    </div>
+  </section>
+
+  <!-- ── 1. Estrategia ───────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">1</span>Estrategia para 18 000+ puntos</h2>
+
+    <h3>Renderizado GPU con Deck.gl</h3>
+    <p>
+      Los 18 763 puntos se renderizan íntegramente en la GPU mediante <strong>Deck.gl ScatterplotLayer</strong>.
+      El hilo principal nunca itera sobre los puntos para dibujarlos; el navegador solo ejecuta un
+      draw call por frame, lo que garantiza <strong>60 fps</strong> incluso con todos los puntos visibles.
+    </p>
+
+    <h3>Procesamiento off-thread con Web Worker</h3>
+    <p>
+      El algoritmo de asignación de territorios corre en un <strong>Web Worker dedicado</strong>
+      (<code>workers/geo.worker.ts</code>). El hilo principal envía los datos y recibe el resultado;
+      la UI nunca se congela durante el cálculo.
+    </p>
+
+    <h3>Filtro espacial con R-tree (rbush)</h3>
+    <p>
+      Para el filtro de radio, se construye un <strong>índice R-tree</strong> con todos los puntos.
+      La búsqueda por bounding box es <strong>O(log n)</strong>; luego se aplica distancia exacta
+      con Turf.js solo sobre los candidatos del bbox.
+    </p>
+
+    <pre><span class="cmt">// Filtro de radio — geo.worker.ts</span>
+<span class="kw">const</span> tree = <span class="kw">new</span> <span class="fn">RBush</span>()
+tree.<span class="fn">load</span>(points)                         <span class="cmt">// carga en bulk O(n log n)</span>
+
+<span class="kw">const</span> candidates = tree.<span class="fn">search</span>(bbox)    <span class="cmt">// O(log n) — candidatos</span>
+<span class="kw">const</span> result = candidates.<span class="fn">filter</span>(p =>
+  turf.<span class="fn">distance</span>(center, p) &lt;= radiusKm   <span class="cmt">// distancia exacta</span>
+)</pre>
+
+    <h3>Asignación de territorios — Greedy Nearest Neighbor con capacidad fija</h3>
+    <p>
+      Se eligen <strong>k semillas aleatorias</strong> de puntos reales del dataset (no centroides
+      abstractos). Luego se computan todos los pares punto↔semilla, se ordenan por distancia y se
+      asignan greedily: un punto va al vendedor más cercano que aún tenga cupo.
+      Esto garantiza exactamente <strong>N puntos por vendedor</strong> sin solapamiento.
+    </p>
+
+    <div class="alert">
+      <strong>¿Por qué no K-means estándar?</strong> K-means no tiene restricción de capacidad —
+      un cluster puede tener 5 000 puntos y otro 20. El algoritmo greedy con capacidad fija resuelve
+      exactamente el requerimiento: <em>N clientes por vendedor</em>.
+    </div>
+
+    <h3>Cache HTTP de puntos</h3>
+    <p>
+      El endpoint <code>/api/points</code> incluye <code>Cache-Control: s-maxage=300</code>.
+      Los puntos no cambian entre requests; cachearlos 5 minutos elimina la carga a la base de datos
+      en recargas y navegación entre páginas.
+    </p>
+  </section>
+
+  <!-- ── 2. Librerías ────────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">2</span>Librerías externas y justificación</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Librería</th>
+          <th>Rol</th>
+          <th>Por qué se eligió</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Deck.gl 9</strong> <span class="tag tag-blue">WebGL</span></td>
+          <td>Renderizado de puntos y polígonos</td>
+          <td>Única opción que mantiene 60 fps con 18k+ geometrías sin sacrificar interactividad (tooltips, picking, highlight)</td>
+        </tr>
+        <tr>
+          <td><strong>MapLibre GL</strong> <span class="tag tag-green">Open source</span></td>
+          <td>Mapa base</td>
+          <td>Fork open-source de Mapbox GL; sin cuota de uso. Se integra nativamente con Deck.gl como base layer</td>
+        </tr>
+        <tr>
+          <td><strong>Turf.js</strong> <span class="tag tag-purple">Geo</span></td>
+          <td>Convex hull, buffer, distancia</td>
+          <td>Librería estándar de geoestadística en JS; modular (tree-shakeable), bien probada, no requiere servidor</td>
+        </tr>
+        <tr>
+          <td><strong>rbush</strong> <span class="tag tag-yellow">Índice</span></td>
+          <td>R-tree espacial</td>
+          <td>La implementación R-tree más rápida en JS. Búsqueda O(log n) vs O(n) de un array plano — crítico para 18k puntos</td>
+        </tr>
+        <tr>
+          <td><strong>Next.js 16</strong> <span class="tag tag-blue">Framework</span></td>
+          <td>SSR, API Routes, bundler</td>
+          <td>API serverless integrada (evita backend separado), Turbopack para dev rápido, App Router para layouts y metadata</td>
+        </tr>
+        <tr>
+          <td><strong>Prisma 6</strong> <span class="tag tag-green">ORM</span></td>
+          <td>Acceso a PostgreSQL</td>
+          <td>Tipado end-to-end generado desde el schema; migraciones declarativas; compatible con Neon (serverless Postgres)</td>
+        </tr>
+        <tr>
+          <td><strong>Zod</strong> <span class="tag tag-purple">Validación</span></td>
+          <td>Validación de body en POSTs</td>
+          <td>Parse + validación en una línea; integración con TypeScript sin boilerplate extra</td>
+        </tr>
+        <tr>
+          <td><strong>Google Places API</strong> <span class="tag tag-yellow">Search</span></td>
+          <td>Autocomplete de ubicaciones</td>
+          <td>Única API con cobertura completa de Lima y Perú; <code>AutocompleteSuggestion</code> es el reemplazo moderno (async/await) del widget deprecado</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── 3. Escalabilidad ────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">3</span>Escalabilidad a 500 000 puntos</h2>
+
+    <p>
+      Con 500k puntos el enfoque actual falla en dos lugares: la descarga inicial (~50 MB de JSON)
+      y el Web Worker (18k × 500k pares = 9 000M operaciones para el greedy). A continuación la
+      estrategia de escala por capa.
+    </p>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-title">
+          <span class="tag tag-blue">DB</span> Clustering en PostgreSQL + PostGIS
+        </div>
+        <p>
+          Mover el K-means al servidor con <code>ST_ClusterDBSCAN</code> o
+          <code>ST_ClusterKMeans</code>. El índice GiST espacial hace las búsquedas por proximidad
+          en O(log n) en el servidor. El cliente solo recibe el resultado ya agrupado.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="tag tag-green">API</span> Carga por viewport (lazy tiles)
+        </div>
+        <p>
+          En lugar de descargar todos los puntos, el cliente envía el bounding box visible del mapa
+          y la API devuelve solo los puntos dentro del viewport. Al hacer zoom, se solicitan más
+          puntos con mayor densidad.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="tag tag-purple">Mapa</span> Vector Tiles (MVT)
+        </div>
+        <p>
+          Servir los puntos como <strong>Mapbox Vector Tiles</strong> desde PostGIS
+          (<code>ST_AsMVT</code>). Deck.gl los consume con <code>MVTLayer</code>.
+          El servidor renderiza y agrupa por zoom level — el cliente solo descarga los tiles visibles.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="tag tag-yellow">Cache</span> Redis + pre-cómputo
+        </div>
+        <p>
+          Los territorios calculados se guardan en Redis con TTL largo. Si los mismos parámetros
+          (vendedores + N) ya fueron calculados, se devuelve el resultado cacheado sin correr el
+          algoritmo de nuevo.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="tag tag-red">Worker</span> Worker Pool + SharedArrayBuffer
+        </div>
+        <p>
+          Para el greedy en cliente, usar múltiples workers en paralelo con
+          <code>SharedArrayBuffer</code> para el array de asignaciones. Cada worker procesa un
+          subconjunto de pares. Reduce el tiempo proporcional al número de cores disponibles.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="tag tag-blue">Render</span> Clustering visual (Supercluster)
+        </div>
+        <p>
+          A niveles de zoom bajo, mostrar clusters de puntos con <code>IconLayer</code> (número de
+          puntos por cluster). Solo al hacer zoom se revelan los puntos individuales.
+          Deck.gl tiene soporte nativo para esto.
+        </p>
+      </div>
+    </div>
+
+    <h3>Flujo propuesto para 500k puntos</h3>
+    <ul class="timeline">
+      <li>
+        <strong>Zoom bajo (ciudad completa)</strong>
+        Supercluster devuelve ~200 clusters con conteo. Deck.gl renderiza 200 iconos, no 500k puntos.
+      </li>
+      <li>
+        <strong>Zoom medio (distrito)</strong>
+        MVT tiles cargan los puntos del viewport actual (~5 000 puntos visibles). R-tree local para interacción.
+      </li>
+      <li>
+        <strong>Zoom alto (calle)</strong>
+        Puntos individuales con tooltip y click. La descarga es mínima (&lt;500 puntos visibles).
+      </li>
+      <li>
+        <strong>Asignación de territorios</strong>
+        <code>ST_ClusterKMeans</code> en PostgreSQL con worker de Node.js dedicado (no serverless).
+        El resultado se guarda y el cliente solo descarga los polígonos finales.
+      </li>
+    </ul>
+  </section>
+
+  <!-- ── 4. Arquitectura ─────────────────────────────────────── -->
+  <section>
+    <h2><span class="num">4</span>Arquitectura del proyecto</h2>
+
+    <pre><span class="cmt">geo1/</span>
+<span class="str">├── app/</span>
+<span class="str">│   ├── api/</span>
+<span class="str">│   │   ├── points/route.ts</span>       <span class="cmt">GET (18k puntos, cache 5min) + POST (carga masiva)</span>
+<span class="str">│   │   ├── sellers/route.ts</span>      <span class="cmt">GET vendedores</span>
+<span class="str">│   │   └── territories/route.ts</span>  <span class="cmt">GET / POST / DELETE territorios</span>
+<span class="str">│   └── page.tsx</span>                  <span class="cmt">Orquestador principal (client component)</span>
+<span class="str">├── components/</span>
+<span class="str">│   ├── map/GeoMap.tsx</span>            <span class="cmt">Deck.gl + MapLibre (WebGL)</span>
+<span class="str">│   └── map/SearchBar.tsx</span>         <span class="cmt">Google Places Autocomplete (nuevo API async)</span>
+<span class="str">├── workers/geo.worker.ts</span>         <span class="cmt">K-means + greedy assign + R-tree filter</span>
+<span class="str">├── lib/useGeoData.ts</span>             <span class="cmt">Hook central: datos + comunicación worker</span>
+<span class="str">└── prisma/schema.prisma</span>          <span class="cmt">Modelos: Vendedor, PuntoVenta, Territorio</span></pre>
+
+    <div class="alert">
+      <strong>Principio clave:</strong> el hilo principal solo coordina. Todo cálculo pesado
+      (clustering, filtrado espacial) ocurre en el Web Worker. Todo renderizado ocurre en la GPU
+      vía Deck.gl. El navegador nunca se bloquea.
+    </div>
+  </section>
+
+  <footer>
+    Geo Territorial — Reto Técnico &nbsp;·&nbsp; Stack: Next.js · Deck.gl · PostgreSQL · TypeScript
+  </footer>
+
+</div>
+</body>
+</html>

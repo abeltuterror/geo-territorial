@@ -24,6 +24,7 @@ interface GeoMapProps {
   points: SalesPoint[]
   territories: Territory[]
   filteredIds: Set<string> | null
+  center?: [number, number] | null
   onPointClick?: (point: SalesPoint) => void
   onTerritoryClick?: (territory: Territory) => void
 }
@@ -32,11 +33,22 @@ export default function GeoMap({
   points,
   territories,
   filteredIds,
+  center,
   onPointClick,
   onTerritoryClick,
 }: GeoMapProps) {
   const [viewState, setViewState] = useState(INITIAL_VIEW)
   const mapRef = useRef<MapRef>(null)
+
+  const [prevCenter, setPrevCenter] = useState(center)
+  if (prevCenter !== center) {
+    setPrevCenter(center)
+    if (center) {
+      setViewState((prev) => ({ ...prev, longitude: center[0], latitude: center[1], zoom: 13 }))
+    } else {
+      setViewState(INITIAL_VIEW)
+    }
+  }
 
   const visiblePoints = useMemo(() => {
     if (!filteredIds) return points

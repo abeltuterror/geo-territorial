@@ -33,6 +33,7 @@ export default function Home() {
   } = useGeoData()
 
   const [selectedTerritory, setSelectedTerritory] = useState<Territory | null>(null)
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
 
   if (isLoading) {
     return (
@@ -63,8 +64,8 @@ export default function Home() {
         {/* Top bar */}
         <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-3">
           <SearchBar
-            onLocationSelect={(center) => filterByRadius(center, 3)}
-            onClear={clearFilter}
+            onLocationSelect={(center) => { setMapCenter(center); filterByRadius(center, 3) }}
+            onClear={() => { clearFilter() }}
             isFiltered={filteredIds !== null}
           />
           {filteredIds !== null && (
@@ -84,6 +85,7 @@ export default function Home() {
           points={points}
           territories={territories}
           filteredIds={filteredIds}
+          center={mapCenter}
           onTerritoryClick={setSelectedTerritory}
         />
       </div>

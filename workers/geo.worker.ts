@@ -28,76 +28,13 @@ interface FilterRadiusPayload {
   radiusKm: number
 }
 
-// ── K-means spatial clustering ────────────────────────────────────────────────
-function kMeansClustering(
-  points: SalesPoint[],
-  k: number,
-  maxIterations = 50
-): number[] {
-  // Farthest-point initialization: pick k real data points maximally spread apart.
-  // Each new centroid is the point farthest from all existing centroids.
-  // Guarantees real coordinates, no empty clusters, and good geographic spread.
-  const chosen: { lng: number; lat: number }[] = []
-
-  // Seed: point closest to the geographic mean
-  const meanLng = points.reduce((s, p) => s + p.longitud, 0) / points.length
-  const meanLat = points.reduce((s, p) => s + p.latitud, 0) / points.length
-  let seedIdx = 0
-  let seedMin = Infinity
-  for (let i = 0; i < points.length; i++) {
-    const d = (points[i].longitud - meanLng) ** 2 + (points[i].latitud - meanLat) ** 2
-    if (d < seedMin) { seedMin = d; seedIdx = i }
+// ── Pick k distinct random seeds from actual data points ─────────────────────
+function pickRandomSeeds(points: SalesPoint[], k: number): SalesPoint[] {
+  const indices = new Set<number>()
+  while (indices.size < k) {
+    indices.add(Math.floor(Math.random() * points.length))
   }
-  chosen.push({ lng: points[seedIdx].longitud, lat: points[seedIdx].latitud })
-
-  // Each subsequent centroid: the point farthest from any chosen centroid
-  for (let c = 1; c < k; c++) {
-    let maxDist = -Infinity
-    let farthestIdx = 0
-    for (let i = 0; i < points.length; i++) {
-      let nearestChosen = Infinity
-      for (const ch of chosen) {
-        const d = (points[i].longitud - ch.lng) ** 2 + (points[i].latitud - ch.lat) ** 2
-        if (d < nearestChosen) nearestChosen = d
-      }
-      if (nearestChosen > maxDist) { maxDist = nearestChosen; farthestIdx = i }
-    }
-    chosen.push({ lng: points[farthestIdx].longitud, lat: points[farthestIdx].latitud })
-  }
-
-  let centroids = chosen
-
-  let assignments = new Array(points.length).fill(0)
-
-  for (let iter = 0; iter < maxIterations; iter++) {
-    // Assign each point to nearest centroid
-    const newAssignments = points.map((p) => {
-      let minDist = Infinity
-      let nearest = 0
-      centroids.forEach((c, ci) => {
-        const d = Math.pow(p.longitud - c.lng, 2) + Math.pow(p.latitud - c.lat, 2)
-        if (d < minDist) { minDist = d; nearest = ci }
-      })
-      return nearest
-    })
-
-    // Check convergence
-    const changed = newAssignments.some((a, i) => a !== assignments[i])
-    assignments = newAssignments
-    if (!changed) break
-
-    // Recompute centroids
-    centroids = Array.from({ length: k }, (_, ci) => {
-      const cluster = points.filter((_, i) => assignments[i] === ci)
-      if (cluster.length === 0) return centroids[ci]
-      return {
-        lng: cluster.reduce((s, p) => s + p.longitud, 0) / cluster.length,
-        lat: cluster.reduce((s, p) => s + p.latitud, 0) / cluster.length,
-      }
-    })
-  }
-
-  return assignments
+  return Array.from(indices).map((i) => points[i])
 }
 
 // ── Build convex hull polygon from a set of points ───────────────────────────
@@ -120,30 +57,39 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     const { points, params, allSellers } = payload as AssignTerritoriesPayload
     const { selectedSellerIds, pointsPerSeller } = params
 
-    // Use all points so K-means finds real geographic zones
     const k = selectedSellerIds.length
-    const assignments = kMeansClustering(points, k)
+    const seeds = pickRandomSeeds(points, k)
 
-    // Build territories with exactly pointsPerSeller contiguous points
-    const territories = selectedSellerIds.map((sellerId, ci) => {
-      const clusterPoints = points.filter((_, i) => assignments[i] === ci)
-      const seller = allSellers.find((s) => s.id === sellerId)!
-
-      // Centroid of this cluster
-      const centroid = {
-        lng: clusterPoints.reduce((s, p) => s + p.longitud, 0) / clusterPoints.length,
-        lat: clusterPoints.reduce((s, p) => s + p.latitud, 0) / clusterPoints.length,
+    // Build all (pointIndex, sellerIndex, distance) pairs and sort by distance.
+    // Then greedily assign: closest pair wins; each point goes to one seller only,
+    // each seller is capped at pointsPerSeller.
+    const pairs: { pi: number; si: number; dist: number }[] = []
+    for (let pi = 0; pi < points.length; pi++) {
+      for (let si = 0; si < k; si++) {
+        const d =
+          (points[pi].longitud - seeds[si].longitud) ** 2 +
+          (points[pi].latitud - seeds[si].latitud) ** 2
+        pairs.push({ pi, si, dist: d })
       }
+    }
+    pairs.sort((a, b) => a.dist - b.dist)
 
-      // Take the N closest points to the centroid (= geographically contiguous)
-      const finalPoints = [...clusterPoints]
-        .sort((a, b) => {
-          const da = (a.longitud - centroid.lng) ** 2 + (a.latitud - centroid.lat) ** 2
-          const db = (b.longitud - centroid.lng) ** 2 + (b.latitud - centroid.lat) ** 2
-          return da - db
-        })
-        .slice(0, pointsPerSeller)
+    const pointTaken = new Set<number>()
+    const sellerCapacity = new Array(k).fill(pointsPerSeller)
+    const sellerPoints: SalesPoint[][] = Array.from({ length: k }, () => [])
 
+    for (const { pi, si } of pairs) {
+      if (pointTaken.has(pi)) continue       // point already claimed
+      if (sellerCapacity[si] <= 0) continue  // seller already full
+      pointTaken.add(pi)
+      sellerCapacity[si]--
+      sellerPoints[si].push(points[pi])
+      if (sellerCapacity.every((c) => c === 0)) break  // all sellers full
+    }
+
+    const territories = selectedSellerIds.map((sellerId, ci) => {
+      const seller = allSellers.find((s) => s.id === sellerId)!
+      const finalPoints = sellerPoints[ci]
       return {
         vendedorId: sellerId,
         sellerName: seller.nombreCompleto,

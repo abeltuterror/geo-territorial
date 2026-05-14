@@ -39,7 +39,7 @@ export default function Home() {
       <div className="w-screen h-screen flex flex-col items-center justify-center bg-gray-950 gap-4">
         <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
         <p className="text-gray-400 text-sm">
-          Cargando {(18763).toLocaleString()} puntos de venta...
+          Cargando 18,763 puntos de venta...
         </p>
       </div>
     )

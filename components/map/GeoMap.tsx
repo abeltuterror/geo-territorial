@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import Map, { type MapRef } from "react-map-gl/maplibre"
+import { useMemo, useRef, useState } from "react"
+import MapGL, { type MapRef } from "react-map-gl/maplibre"
 import DeckGL from "@deck.gl/react"
 import { ScatterplotLayer, PolygonLayer } from "@deck.gl/layers"
 import type { PickingInfo } from "@deck.gl/core"
@@ -59,7 +59,7 @@ export default function GeoMap({
         id: "sales-points",
         data: visiblePoints,
         getPosition: (d) => [d.longitude, d.latitude],
-        getColor: (d) => {
+        getFillColor: (d) => {
           const color = territoryColorMap.get(d.id)
           return color ? [...color, 220] : [160, 160, 160, 180]
         },
@@ -74,7 +74,7 @@ export default function GeoMap({
           if (info.object) onPointClick?.(info.object)
         },
         updateTriggers: {
-          getColor: [territoryColorMap],
+          getFillColor: [territoryColorMap],
         },
       }),
     [visiblePoints, territoryColorMap, onPointClick]
@@ -125,7 +125,7 @@ export default function GeoMap({
           return null
         }}
       >
-        <Map
+        <MapGL
           ref={mapRef}
           mapStyle={MAPLIBRE_STYLE}
           reuseMaps

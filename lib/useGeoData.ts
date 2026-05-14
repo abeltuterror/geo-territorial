@@ -52,16 +52,16 @@ export function useGeoData() {
           fetch("/api/sellers"),
           fetch("/api/territories"),
         ])
-        const [points, sellers, territories] = await Promise.all([
+        const [pointsData, sellersData, territoriesData] = await Promise.all([
           pointsRes.json(),
           sellersRes.json(),
           territoriesRes.json(),
         ])
         setState((prev) => ({
           ...prev,
-          points,
-          sellers,
-          territories,
+          points: Array.isArray(pointsData) ? pointsData : [],
+          sellers: Array.isArray(sellersData) ? sellersData : [],
+          territories: Array.isArray(territoriesData) ? territoriesData : [],
           isLoading: false,
         }))
       } catch {
@@ -114,8 +114,12 @@ export function useGeoData() {
           }),
         })
         const res = await fetch("/api/territories")
-        const territories = await res.json()
-        setState((prev) => ({ ...prev, territories, isProcessing: false }))
+        const data = await res.json()
+        setState((prev) => ({
+          ...prev,
+          territories: Array.isArray(data) ? data : [],
+          isProcessing: false,
+        }))
       } catch {
         setState((prev) => ({ ...prev, isProcessing: false }))
       }

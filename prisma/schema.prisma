@@ -1,0 +1,47 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+model Seller {
+  id          Int          @id @default(autoincrement())
+  code        Int          @unique
+  fullName    String
+  territories Territory[]
+
+  @@map("sellers")
+}
+
+model SalesPoint {
+  id               String    @id
+  clientName       String
+  lastPurchaseDate DateTime?
+  longitude        Float
+  latitude         Float
+  annualAmount     Float?
+  currency         String    @default("S/")
+  territoryId      String?
+  territory        Territory? @relation(fields: [territoryId], references: [id])
+
+  @@index([longitude, latitude])
+  @@map("sales_points")
+}
+
+model Territory {
+  id          String       @id @default(cuid())
+  name        String
+  color       String
+  sellerId    Int
+  seller      Seller       @relation(fields: [sellerId], references: [id])
+  geoJson     Json
+  salesPoints SalesPoint[]
+  createdAt   DateTime     @default(now())
+
+  @@map("territories")
+}

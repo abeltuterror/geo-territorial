@@ -34,12 +34,38 @@ function kMeansClustering(
   k: number,
   maxIterations = 50
 ): number[] {
-  // Initialize centroids by spreading across the point set
-  const step = Math.floor(points.length / k)
-  let centroids = Array.from({ length: k }, (_, i) => ({
-    lng: points[i * step].longitud,
-    lat: points[i * step].latitud,
-  }))
+  // Farthest-point initialization: pick k real data points maximally spread apart.
+  // Each new centroid is the point farthest from all existing centroids.
+  // Guarantees real coordinates, no empty clusters, and good geographic spread.
+  const chosen: { lng: number; lat: number }[] = []
+
+  // Seed: point closest to the geographic mean
+  const meanLng = points.reduce((s, p) => s + p.longitud, 0) / points.length
+  const meanLat = points.reduce((s, p) => s + p.latitud, 0) / points.length
+  let seedIdx = 0
+  let seedMin = Infinity
+  for (let i = 0; i < points.length; i++) {
+    const d = (points[i].longitud - meanLng) ** 2 + (points[i].latitud - meanLat) ** 2
+    if (d < seedMin) { seedMin = d; seedIdx = i }
+  }
+  chosen.push({ lng: points[seedIdx].longitud, lat: points[seedIdx].latitud })
+
+  // Each subsequent centroid: the point farthest from any chosen centroid
+  for (let c = 1; c < k; c++) {
+    let maxDist = -Infinity
+    let farthestIdx = 0
+    for (let i = 0; i < points.length; i++) {
+      let nearestChosen = Infinity
+      for (const ch of chosen) {
+        const d = (points[i].longitud - ch.lng) ** 2 + (points[i].latitud - ch.lat) ** 2
+        if (d < nearestChosen) nearestChosen = d
+      }
+      if (nearestChosen > maxDist) { maxDist = nearestChosen; farthestIdx = i }
+    }
+    chosen.push({ lng: points[farthestIdx].longitud, lat: points[farthestIdx].latitud })
+  }
+
+  let centroids = chosen
 
   let assignments = new Array(points.length).fill(0)
 
@@ -94,24 +120,35 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     const { points, params, allSellers } = payload as AssignTerritoriesPayload
     const { selectedSellerIds, pointsPerSeller } = params
 
-    const totalNeeded = selectedSellerIds.length * pointsPerSeller
-    const workingPoints = points.slice(0, Math.min(totalNeeded, points.length))
-
-    // Cluster points into N groups (one per seller)
+    // Use all points so K-means finds real geographic zones
     const k = selectedSellerIds.length
-    const assignments = kMeansClustering(workingPoints, k)
+    const assignments = kMeansClustering(points, k)
 
-    // Build territories
+    // Build territories with exactly pointsPerSeller contiguous points
     const territories = selectedSellerIds.map((sellerId, ci) => {
-      const clusterPoints = workingPoints.filter((_, i) => assignments[i] === ci)
-      const polygon = buildPolygon(clusterPoints)
+      const clusterPoints = points.filter((_, i) => assignments[i] === ci)
       const seller = allSellers.find((s) => s.id === sellerId)!
+
+      // Centroid of this cluster
+      const centroid = {
+        lng: clusterPoints.reduce((s, p) => s + p.longitud, 0) / clusterPoints.length,
+        lat: clusterPoints.reduce((s, p) => s + p.latitud, 0) / clusterPoints.length,
+      }
+
+      // Take the N closest points to the centroid (= geographically contiguous)
+      const finalPoints = [...clusterPoints]
+        .sort((a, b) => {
+          const da = (a.longitud - centroid.lng) ** 2 + (a.latitud - centroid.lat) ** 2
+          const db = (b.longitud - centroid.lng) ** 2 + (b.latitud - centroid.lat) ** 2
+          return da - db
+        })
+        .slice(0, pointsPerSeller)
 
       return {
         vendedorId: sellerId,
         sellerName: seller.nombreCompleto,
-        points: clusterPoints,
-        polygon,
+        points: finalPoints,
+        polygon: buildPolygon(finalPoints),
       }
     })
 

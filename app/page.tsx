@@ -23,10 +23,13 @@ export default function Home() {
     points,
     sellers,
     territories,
+    pendingAssignments,
     filteredIds,
     isLoading,
     isProcessing,
     assignTerritories,
+    savePendingTerritories,
+    discardPending,
     clearTerritories,
     filterByRadius,
     clearFilter,
@@ -34,6 +37,8 @@ export default function Home() {
 
   const [selectedTerritory, setSelectedTerritory] = useState<Territory | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
+
+  const unassignedCount = points.filter((p) => p.territorioId === null).length
 
   if (isLoading) {
     return (
@@ -48,20 +53,21 @@ export default function Home() {
 
   return (
     <div className="w-screen h-screen flex bg-gray-950 overflow-hidden">
-      {/* Sidebar */}
       <TerritoryPanel
         sellers={sellers}
         territories={territories}
+        pendingAssignments={pendingAssignments}
+        unassignedCount={unassignedCount}
         isProcessing={isProcessing}
         onAssign={assignTerritories}
         onClearTerritories={clearTerritories}
+        onSavePending={savePendingTerritories}
+        onDiscardPending={discardPending}
         onTerritorySelect={setSelectedTerritory}
         selectedTerritory={selectedTerritory}
       />
 
-      {/* Map area */}
       <div className="flex-1 relative">
-        {/* Top bar */}
         <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-3">
           <SearchBar
             onLocationSelect={(center) => { setMapCenter(center); filterByRadius(center, 3) }}
@@ -84,6 +90,7 @@ export default function Home() {
         <GeoMap
           points={points}
           territories={territories}
+          pendingAssignments={pendingAssignments}
           filteredIds={filteredIds}
           center={mapCenter}
           onTerritoryClick={setSelectedTerritory}

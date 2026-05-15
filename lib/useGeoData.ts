@@ -1,12 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { SalesPoint, Seller, Territory, TerritoryAssignmentParams } from "@/types/geo"
+import type { SalesPoint, Seller, Territory, TerritoryAssignmentParams, PendingAssignment } from "@/types/geo"
+import { getTerritoryColor } from "@/lib/utils"
 
 interface GeoDataState {
   points: SalesPoint[]
   sellers: Seller[]
   territories: Territory[]
+  pendingAssignments: PendingAssignment[] | null
   filteredIds: Set<string> | null
   isLoading: boolean
   isProcessing: boolean
@@ -15,17 +17,22 @@ interface GeoDataState {
 
 export function useGeoData() {
   const workerRef = useRef<Worker | null>(null)
+  const pendingRef = useRef<PendingAssignment[] | null>(null)
   const [state, setState] = useState<GeoDataState>({
     points: [],
     sellers: [],
     territories: [],
+    pendingAssignments: null,
     filteredIds: null,
     isLoading: true,
     isProcessing: false,
     error: null,
   })
 
-  // Boot worker
+  useEffect(() => {
+    pendingRef.current = state.pendingAssignments
+  }, [state.pendingAssignments])
+
   useEffect(() => {
     workerRef.current = new Worker(new URL("../workers/geo.worker.ts", import.meta.url), {
       type: "module",
@@ -33,7 +40,22 @@ export function useGeoData() {
     workerRef.current.onmessage = (e) => {
       const { type, payload } = e.data
       if (type === "TERRITORIES_READY") {
-        saveTerritoriesFromWorker(payload)
+        setState((prev) => {
+          const colorOffset = prev.territories.length
+          const pending: PendingAssignment[] = (
+            payload as {
+              vendedorId: number
+              sellerName: string
+              points: SalesPoint[]
+              polygon: GeoJSON.Feature<GeoJSON.Polygon> | null
+            }[]
+          ).map((a, idx) => ({
+            ...a,
+            colorIndex: colorOffset + idx,
+            color: getTerritoryColor(colorOffset + idx),
+          }))
+          return { ...prev, pendingAssignments: pending, isProcessing: false }
+        })
       }
       if (type === "FILTER_READY") {
         const ids = new Set<string>((payload as SalesPoint[]).map((p) => p.id))
@@ -43,7 +65,6 @@ export function useGeoData() {
     return () => workerRef.current?.terminate()
   }, [])
 
-  // Initial data load
   useEffect(() => {
     async function load() {
       try {
@@ -79,10 +100,12 @@ export function useGeoData() {
     (params: TerritoryAssignmentParams) => {
       if (!workerRef.current) return
       setState((prev) => ({ ...prev, isProcessing: true }))
+      // Only pass unassigned points so saved points are excluded from new rounds
+      const unassignedPoints = state.points.filter((p) => p.territorioId === null)
       workerRef.current.postMessage({
         type: "ASSIGN_TERRITORIES",
         payload: {
-          points: state.points,
+          points: unassignedPoints,
           params,
           allSellers: state.sellers,
         },
@@ -91,45 +114,53 @@ export function useGeoData() {
     [state.points, state.sellers]
   )
 
-  const saveTerritoriesFromWorker = useCallback(
-    async (
-      assignments: {
-        vendedorId: number
-        points: SalesPoint[]
-        polygon: GeoJSON.Feature<GeoJSON.Polygon> | null
-      }[]
-    ) => {
-      const valid = assignments.filter((a) => a.polygon !== null)
-      try {
-        await fetch("/api/territories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            assignments: valid.map((a, idx) => ({
-              vendedorId: a.vendedorId,
-              pointIds: a.points.map((p) => p.id),
-              geoJson: a.polygon,
-              colorIndex: idx,
-            })),
-          }),
-        })
-        const res = await fetch("/api/territories")
-        const data = await res.json()
-        setState((prev) => ({
-          ...prev,
-          territories: Array.isArray(data) ? data : [],
-          isProcessing: false,
-        }))
-      } catch {
-        setState((prev) => ({ ...prev, isProcessing: false }))
-      }
-    },
-    []
-  )
+  const savePendingTerritories = useCallback(async () => {
+    const pendingAssignments = pendingRef.current
+    if (!pendingAssignments) return
+    setState((prev) => ({ ...prev, isProcessing: true }))
+    const valid = pendingAssignments.filter((a) => a.polygon !== null)
+    try {
+      await fetch("/api/territories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignments: valid.map((a) => ({
+            vendedorId: a.vendedorId,
+            pointIds: a.points.map((p) => p.id),
+            geoJson: a.polygon,
+            colorIndex: a.colorIndex,
+          })),
+        }),
+      })
+      const savedPointIds = new Set(valid.flatMap((a) => a.points.map((p) => p.id)))
+      const territoriesRes = await fetch("/api/territories")
+      const territoriesData = await territoriesRes.json()
+      setState((prev) => ({
+        ...prev,
+        points: prev.points.map((p) =>
+          savedPointIds.has(p.id) ? { ...p, territorioId: "__saved__" } : p
+        ),
+        territories: Array.isArray(territoriesData) ? territoriesData : prev.territories,
+        pendingAssignments: null,
+        isProcessing: false,
+      }))
+    } catch {
+      setState((prev) => ({ ...prev, isProcessing: false }))
+    }
+  }, [])
+
+  const discardPending = useCallback(() => {
+    setState((prev) => ({ ...prev, pendingAssignments: null }))
+  }, [])
 
   const clearTerritories = useCallback(async () => {
     await fetch("/api/territories", { method: "DELETE" })
-    setState((prev) => ({ ...prev, territories: [] }))
+    setState((prev) => ({
+      ...prev,
+      territories: [],
+      pendingAssignments: null,
+      points: prev.points.map((p) => ({ ...p, territorioId: null })),
+    }))
   }, [])
 
   const filterByRadius = useCallback(
@@ -151,6 +182,8 @@ export function useGeoData() {
   return {
     ...state,
     assignTerritories,
+    savePendingTerritories,
+    discardPending,
     clearTerritories,
     filterByRadius,
     clearFilter,

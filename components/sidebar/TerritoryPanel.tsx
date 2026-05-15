@@ -1,16 +1,20 @@
 "use client"
 
-import { useState } from "react"
-import { Users, MapPin, Zap, Trash2, ChevronDown, ChevronUp } from "lucide-react"
-import type { Seller, Territory, TerritoryAssignmentParams } from "@/types/geo"
+import { useMemo, useState } from "react"
+import { Users, MapPin, Zap, Trash2, ChevronDown, ChevronUp, Save, X } from "lucide-react"
+import type { Seller, Territory, TerritoryAssignmentParams, PendingAssignment } from "@/types/geo"
 import { cn, formatCurrency } from "@/lib/utils"
 
 interface TerritoryPanelProps {
   sellers: Seller[]
   territories: Territory[]
+  pendingAssignments: PendingAssignment[] | null
+  unassignedCount: number
   isProcessing: boolean
   onAssign: (params: TerritoryAssignmentParams) => void
   onClearTerritories: () => void
+  onSavePending: () => void
+  onDiscardPending: () => void
   onTerritorySelect: (territory: Territory | null) => void
   selectedTerritory: Territory | null
 }
@@ -18,9 +22,13 @@ interface TerritoryPanelProps {
 export default function TerritoryPanel({
   sellers,
   territories,
+  pendingAssignments,
+  unassignedCount,
   isProcessing,
   onAssign,
   onClearTerritories,
+  onSavePending,
+  onDiscardPending,
   onTerritorySelect,
   selectedTerritory,
 }: TerritoryPanelProps) {
@@ -47,6 +55,36 @@ export default function TerritoryPanel({
     })
   }
 
+  // Total saved clients per seller across all rounds
+  const sellerSavedTotals = useMemo(() => {
+    const totals = new Map<number, number>()
+    territories.forEach((t) => {
+      totals.set(t.vendedorId, (totals.get(t.vendedorId) ?? 0) + t.puntosVenta.length)
+    })
+    return totals
+  }, [territories])
+
+  // Pending clients per seller (preview, not yet saved)
+  const sellerPendingTotals = useMemo(() => {
+    const totals = new Map<number, number>()
+    pendingAssignments?.forEach((a) => {
+      totals.set(a.vendedorId, (totals.get(a.vendedorId) ?? 0) + a.points.length)
+    })
+    return totals
+  }, [pendingAssignments])
+
+  // Latest territory color per seller for the dot indicator
+  const sellerLatestColor = useMemo(() => {
+    const colors = new Map<number, string>()
+    territories.forEach((t) => colors.set(t.vendedorId, t.color))
+    return colors
+  }, [territories])
+
+  const totalToAssign = selectedSellerIds.size * pointsPerSeller
+  const exceedsAvailable = totalToAssign > unassignedCount
+
+  const canGenerate = selectedSellerIds.size > 0 && !isProcessing && !pendingAssignments
+
   return (
     <aside className="w-80 bg-gray-900 border-r border-gray-700 flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -56,7 +94,10 @@ export default function TerritoryPanel({
           Geo Territorial
         </h1>
         <p className="text-gray-400 text-xs mt-1">
-          {sellers.length} vendedores · {territories.length} territorios activos
+          {sellers.length} vendedores · {territories.length} territorios guardados
+          {pendingAssignments && (
+            <span className="text-amber-400"> · {pendingAssignments.length} en vista previa</span>
+          )}
         </p>
       </div>
 
@@ -71,41 +112,79 @@ export default function TerritoryPanel({
           <input
             type="number"
             min={1}
-            max={1000}
+            max={10000}
             value={pointsPerSeller}
             onChange={(e) => setPointsPerSeller(Number(e.target.value))}
             className="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
 
-        <div className="text-xs text-gray-500">
-          Total a asignar: {(selectedSellerIds.size * pointsPerSeller).toLocaleString()} puntos
+        <div className="space-y-1">
+          <div className="text-xs text-gray-500">
+            Disponibles: <span className="text-gray-300">{unassignedCount.toLocaleString()} puntos</span>
+          </div>
+          <div className={cn("text-xs", exceedsAvailable ? "text-amber-400" : "text-gray-500")}>
+            A asignar: {totalToAssign.toLocaleString()} puntos
+            {exceedsAvailable && " (supera los disponibles)"}
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={handleAssign}
-            disabled={selectedSellerIds.size === 0 || isProcessing}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors",
-              selectedSellerIds.size === 0 || isProcessing
-                ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-500 text-white"
-            )}
-          >
-            <Zap className="w-4 h-4" />
-            {isProcessing ? "Procesando..." : "Generar territorios"}
-          </button>
-          {territories.length > 0 && (
+        {/* Pending preview actions */}
+        {pendingAssignments ? (
+          <div className="space-y-2">
+            <div className="text-xs text-amber-400 font-medium">
+              Vista previa lista — {pendingAssignments.reduce((s, a) => s + a.points.length, 0).toLocaleString()} puntos calculados
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onSavePending}
+                disabled={isProcessing}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors",
+                  isProcessing
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-green-700 hover:bg-green-600 text-white"
+                )}
+              >
+                <Save className="w-4 h-4" />
+                {isProcessing ? "Guardando..." : "Guardar"}
+              </button>
+              <button
+                onClick={onDiscardPending}
+                disabled={isProcessing}
+                className="flex items-center justify-center gap-1 px-3 py-2 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Descartar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
             <button
-              onClick={onClearTerritories}
-              className="px-3 py-2 rounded-md bg-red-900/40 hover:bg-red-900/70 text-red-400 transition-colors"
-              title="Limpiar territorios"
+              onClick={handleAssign}
+              disabled={!canGenerate}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors",
+                !canGenerate
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-500 text-white"
+              )}
             >
-              <Trash2 className="w-4 h-4" />
+              <Zap className="w-4 h-4" />
+              {isProcessing ? "Procesando..." : "Generar territorios"}
             </button>
-          )}
-        </div>
+            {territories.length > 0 && (
+              <button
+                onClick={onClearTerritories}
+                className="px-3 py-2 rounded-md bg-red-900/40 hover:bg-red-900/70 text-red-400 transition-colors"
+                title="Limpiar todos los territorios"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Seller list */}
@@ -144,8 +223,10 @@ export default function TerritoryPanel({
         {showSellers && (
           <ul className="divide-y divide-gray-800">
             {sellers.map((seller) => {
-              const territory = territories.find((t) => t.vendedorId === seller.id)
               const isSelected = selectedSellerIds.has(seller.id)
+              const savedCount = sellerSavedTotals.get(seller.id) ?? 0
+              const pendingCount = sellerPendingTotals.get(seller.id) ?? 0
+              const dotColor = sellerLatestColor.get(seller.id)
               return (
                 <li
                   key={seller.id}
@@ -159,26 +240,32 @@ export default function TerritoryPanel({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSeller(seller.id)}
-                    className="accent-blue-500 w-4 h-4 flex-shrink-0"
+                    className="accent-blue-500 w-4 h-4 shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   />
-                  {territory && (
+                  {dotColor && (
                     <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: territory.color }}
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: dotColor }}
                     />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-gray-200 text-xs font-medium truncate">
                       {seller.nombreCompleto}
                     </p>
-                    {territory && (
+                    {(savedCount > 0 || pendingCount > 0) && (
                       <p className="text-gray-500 text-xs">
-                        {territory.puntosVenta.length} clientes
+                        {savedCount > 0 && (
+                          <span>{savedCount.toLocaleString()} guardados</span>
+                        )}
+                        {savedCount > 0 && pendingCount > 0 && <span> · </span>}
+                        {pendingCount > 0 && (
+                          <span className="text-amber-500">{pendingCount.toLocaleString()} preview</span>
+                        )}
                       </p>
                     )}
                   </div>
-                  <span className="text-gray-600 text-xs flex-shrink-0">
+                  <span className="text-gray-600 text-xs shrink-0">
                     #{seller.codigo}
                   </span>
                 </li>
@@ -200,6 +287,7 @@ export default function TerritoryPanel({
               <span className="text-white text-sm font-medium">
                 {selectedTerritory.vendedor.nombreCompleto}
               </span>
+              <span className="text-gray-500 text-xs">{selectedTerritory.nombre}</span>
             </div>
             <button
               onClick={() => onTerritorySelect(null)}
@@ -213,6 +301,12 @@ export default function TerritoryPanel({
               <span className="text-gray-400">Clientes encerrados</span>
               <span className="text-white font-medium">
                 {selectedTerritory.puntosVenta.length}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-400">Total acumulado vendedor</span>
+              <span className="text-blue-400 font-medium">
+                {(sellerSavedTotals.get(selectedTerritory.vendedorId) ?? 0).toLocaleString()} clientes
               </span>
             </div>
             <div className="flex justify-between text-xs">

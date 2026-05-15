@@ -36,4 +36,13 @@ export interface PolygonInfo {
   totalAmount: number
 }
 
+export interface PendingAssignment {
+  vendedorId: number
+  sellerName: string
+  points: SalesPoint[]
+  polygon: GeoJSON.Feature<GeoJSON.Polygon> | null
+  colorIndex: number
+  color: string
+}
+
 export type MapProvider = "maplibre" | "google"

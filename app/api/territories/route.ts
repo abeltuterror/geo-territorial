@@ -44,16 +44,14 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { assignments } = CreateTerritoriesSchema.parse(body)
 
-    // Clear existing territories before saving new ones
-    await prisma.puntoVenta.updateMany({ data: { territorioId: null } })
-    await prisma.territorio.deleteMany()
+    const existingCount = await prisma.territorio.count()
 
     const created = await Promise.all(
       assignments.map(async (a, idx) => {
         const territory = await prisma.territorio.create({
           data: {
             vendedorId: a.vendedorId,
-            nombre: `Territorio ${idx + 1}`,
+            nombre: `Territorio ${existingCount + idx + 1}`,
             color: getTerritoryColor(a.colorIndex),
             geoJson: a.geoJson,
           },

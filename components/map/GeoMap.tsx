@@ -5,7 +5,7 @@ import MapGL, { type MapRef } from "react-map-gl/maplibre"
 import DeckGL from "@deck.gl/react"
 import { ScatterplotLayer, PolygonLayer } from "@deck.gl/layers"
 import type { PickingInfo } from "@deck.gl/core"
-import type { SalesPoint, Territory } from "@/types/geo"
+import type { SalesPoint, Territory, PendingAssignment } from "@/types/geo"
 import { hexToRgb } from "@/lib/utils"
 import "maplibre-gl/dist/maplibre-gl.css"
 
@@ -20,9 +20,12 @@ const INITIAL_VIEW = {
 const MAPLIBRE_STYLE =
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 
+const SAVED_COLOR: [number, number, number, number] = [55, 60, 80, 210]
+
 interface GeoMapProps {
   points: SalesPoint[]
   territories: Territory[]
+  pendingAssignments: PendingAssignment[] | null
   filteredIds: Set<string> | null
   center?: [number, number] | null
   onPointClick?: (point: SalesPoint) => void
@@ -32,6 +35,7 @@ interface GeoMapProps {
 export default function GeoMap({
   points,
   territories,
+  pendingAssignments,
   filteredIds,
   center,
   onPointClick,
@@ -55,15 +59,23 @@ export default function GeoMap({
     return points.filter((p) => filteredIds.has(p.id))
   }, [points, filteredIds])
 
-  // Build a lookup: pointId -> color from territory
-  const territoryColorMap = useMemo(() => {
+  // Points that have been saved to the DB (belong to a saved territory)
+  const savedPointIds = useMemo(() => {
+    const ids = new Set<string>()
+    territories.forEach((t) => t.puntosVenta.forEach((p) => ids.add(p.id)))
+    return ids
+  }, [territories])
+
+  // Points in the current preview (not yet saved)
+  const pendingColorMap = useMemo(() => {
     const map = new Map<string, [number, number, number]>()
-    territories.forEach((t) => {
-      const rgb = hexToRgb(t.color)
-      t.puntosVenta.forEach((sp) => map.set(sp.id, rgb))
+    if (!pendingAssignments) return map
+    pendingAssignments.forEach((a) => {
+      const rgb = hexToRgb(a.color)
+      a.points.forEach((p) => map.set(p.id, rgb))
     })
     return map
-  }, [territories])
+  }, [pendingAssignments])
 
   const scatterLayer = useMemo(
     () =>
@@ -72,8 +84,10 @@ export default function GeoMap({
         data: visiblePoints,
         getPosition: (d) => [d.longitud, d.latitud],
         getFillColor: (d) => {
-          const color = territoryColorMap.get(d.id)
-          return color ? [...color, 220] : [160, 160, 160, 180]
+          if (savedPointIds.has(d.id)) return SAVED_COLOR
+          const pending = pendingColorMap.get(d.id)
+          if (pending) return [...pending, 220]
+          return [160, 160, 160, 180]
         },
         getRadius: 40,
         radiusUnits: "meters",
@@ -86,13 +100,13 @@ export default function GeoMap({
           if (info.object) onPointClick?.(info.object)
         },
         updateTriggers: {
-          getFillColor: [territoryColorMap],
+          getFillColor: [savedPointIds, pendingColorMap],
         },
       }),
-    [visiblePoints, territoryColorMap, onPointClick]
+    [visiblePoints, savedPointIds, pendingColorMap, onPointClick]
   )
 
-  const polygonLayer = useMemo(
+  const savedPolygonLayer = useMemo(
     () =>
       new PolygonLayer<Territory>({
         id: "territory-polygons",
@@ -116,7 +130,38 @@ export default function GeoMap({
     [territories, onTerritoryClick]
   )
 
-  const layers = [polygonLayer, scatterLayer]
+  const pendingPolygonData = useMemo(
+    () =>
+      pendingAssignments
+        ? pendingAssignments
+            .filter((a) => a.polygon !== null)
+            .map((a) => ({ polygon: a.polygon!, color: a.color }))
+        : [],
+    [pendingAssignments]
+  )
+
+  const pendingPolygonLayer = useMemo(
+    () =>
+      new PolygonLayer<{ polygon: GeoJSON.Feature<GeoJSON.Polygon>; color: string }>({
+        id: "pending-polygons",
+        data: pendingPolygonData,
+        getPolygon: (d) => d.polygon.geometry.coordinates,
+        getFillColor: (d) => {
+          const [r, g, b] = hexToRgb(d.color)
+          return [r, g, b, 60]
+        },
+        getLineColor: (d) => {
+          const [r, g, b] = hexToRgb(d.color)
+          return [r, g, b, 255]
+        },
+        getLineWidth: 3,
+        lineWidthUnits: "pixels",
+        pickable: false,
+      }),
+    [pendingPolygonData]
+  )
+
+  const layers = [savedPolygonLayer, pendingPolygonLayer, scatterLayer]
 
   return (
     <div className="relative w-full h-full">
@@ -143,7 +188,6 @@ export default function GeoMap({
           reuseMaps
         />
       </DeckGL>
-      {/* Point counter */}
       <div className="absolute bottom-4 left-4 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
         {visiblePoints.length.toLocaleString()} puntos
       </div>

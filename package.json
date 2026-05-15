@@ -13,9 +13,6 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
-  "prisma": {
-    "seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
-  },
   "dependencies": {
     "@deck.gl/core": "^9.3.2",
     "@deck.gl/google-maps": "^9.3.2",

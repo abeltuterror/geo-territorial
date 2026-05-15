@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Worker — Geo Territorial</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 40px 24px 80px;
+      font-size: 14px;
+    }
+    .wrap { max-width: 800px; margin: 0 auto; }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #e2e8f0, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: #8892a4; margin-bottom: 48px; font-size: .9rem; }
+
+    /* ── Why section ── */
+    .why {
+      background: #1a1d2e;
+      border: 1px solid #2e3350;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    .why h2 { font-size: .95rem; font-weight: 700; margin-bottom: 12px; color: #e2e8f0; }
+    .why p { color: #8892a4; font-size: .87rem; line-height: 1.7; margin-bottom: 10px; }
+    .why p:last-child { margin-bottom: 0; }
+
+    /* ── Thread diagram ── */
+    .threads {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .thread {
+      border-radius: 12px;
+      border: 1px solid #2e3350;
+      overflow: hidden;
+    }
+    .thread-header {
+      padding: 10px 16px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .thread-main .thread-header  { background: #1e3a5f; color: #4f8ef7; }
+    .thread-worker .thread-header { background: #0d3325; color: #34d399; }
+    .thread-body { background: #1a1d2e; padding: 14px 16px; }
+    .task {
+      font-size: .8rem;
+      color: #c9d1d9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      border-left: 3px solid;
+    }
+    .task:last-child { margin-bottom: 0; }
+    .task-main   { border-color: #4f8ef7; background: #1e3a5f22; }
+    .task-worker { border-color: #34d399; background: #0d332522; }
+    .task-blocked { border-color: #f87171; background: #3d101022; color: #f87171; }
+
+    /* ── Message bus ── */
+    .bus {
+      background: #1a1d2e;
+      border: 1px solid #2e3350;
+      border-radius: 12px;
+      margin-bottom: 40px;
+      overflow: hidden;
+    }
+    .bus-header {
+      padding: 12px 20px;
+      background: #111827;
+      border-bottom: 1px solid #2e3350;
+      font-size: .85rem;
+      font-weight: 700;
+    }
+    .msg-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 1fr;
+      gap: 0;
+      border-bottom: 1px solid #2e3350;
+      align-items: stretch;
+    }
+    .msg-row:last-child { border-bottom: none; }
+    .msg-cell {
+      padding: 12px 16px;
+      font-size: .82rem;
+      border-right: 1px solid #2e3350;
+    }
+    .msg-cell:last-child { border-right: none; }
+    .msg-type { font-family: monospace; font-weight: 700; }
+    .dir-out  { color: #4f8ef7; }
+    .dir-in   { color: #34d399; }
+    .msg-label { font-size: .68rem; color: #8892a4; margin-bottom: 3px; text-transform: uppercase; font-weight: 600; }
+
+    /* ── Algorithm sections ── */
+    .algo {
+      border: 1px solid #2e3350;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+    .algo-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: #1a1d2e;
+      border-bottom: 1px solid #2e3350;
+    }
+    .algo-title { font-weight: 700; font-size: .95rem; }
+    .algo-file  { margin-left: auto; font-size: .72rem; font-family: monospace; color: #4f8ef7; }
+    .badge {
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: .68rem;
+      font-weight: 700;
+    }
+    .badge-green  { background: #0d3325; color: #34d399; }
+    .badge-purple { background: #2d1a4f; color: #c084fc; }
+
+    .algo-body { padding: 20px; background: #111827; display: flex; flex-direction: column; gap: 16px; }
+    .algo-body p { color: #8892a4; font-size: .87rem; line-height: 1.7; }
+
+    /* steps */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step-item {
+      display: flex;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px solid #1a2030;
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: #34d39922;
+      border: 1px solid #34d399;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700; color: #34d399;
+      flex-shrink: 0;
+    }
+    .step-num.purple {
+      background: #c084fc22;
+      border-color: #c084fc;
+      color: #c084fc;
+    }
+    .step-text { font-size: .85rem; color: #c9d1d9; line-height: 1.6; padding-top: 2px; }
+    .step-text code { color: #fbbf24; font-family: monospace; }
+
+    pre {
+      background: #0d1117;
+      border: 1px solid #2e3350;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      overflow-x: auto;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cmt { color: #8b949e; }
+    .hl  { color: #fbbf24; }
+    .bool{ color: #79c0ff; }
+
+    /* complexity table */
+    .cmp {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: #2e3350;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: .8rem;
+    }
+    .cmp-cell {
+      background: #0d1117;
+      padding: 10px 14px;
+    }
+    .cmp-label { color: #8892a4; font-size: .68rem; text-transform: uppercase; margin-bottom: 3px; }
+    .cmp-val   { color: #e2e8f0; font-family: monospace; }
+    .cmp-good  { color: #34d399; }
+    .cmp-bad   { color: #f87171; }
+
+    /* summary */
+    .summary {
+      border: 1px solid #2e3350;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .summary h2 { padding: 14px 20px; font-size: .95rem; font-weight: 700; background: #1a1d2e; border-bottom: 1px solid #2e3350; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { text-align: left; color: #8892a4; padding: 8px 16px; font-weight: 600; background: #1a1d2e; border-bottom: 1px solid #2e3350; }
+    td { padding: 10px 16px; color: #8892a4; border-bottom: 1px solid #2e3350; }
+    td:first-child { color: #a5d6ff; font-family: monospace; font-size: .8rem; }
+    tr:last-child td { border-bottom: none; }
+    td strong { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Web Worker — workers/geo.worker.ts</h1>
+  <p class="subtitle">Procesamiento pesado fuera del hilo principal de JavaScript</p>
+
+  <!-- WHY -->
+  <div class="why">
+    <h2>¿Por qué un Web Worker?</h2>
+    <p>JavaScript es <strong>single-threaded</strong>: si un cálculo tarda 800 ms en el hilo principal, el navegador no puede pintar ni responder a clicks durante ese tiempo — la UI se congela.</p>
+    <p>El algoritmo de asignación construye <strong>18 763 × k pares</strong> (hasta 1,6 M entradas), los ordena y los recorre en greedy. Con 90 vendedores eso son cientos de ms de cómputo puro. Moverlo a un Worker libera el hilo principal completamente: el mapa sigue a 60 fps y los indicadores de estado siguen animándose mientras se calcula.</p>
+  </div>
+
+  <!-- THREAD DIAGRAM -->
+  <div style="margin-bottom:12px; font-size:.8rem; color:#8892a4;">Qué hace cada hilo mientras se calcula un territorio</div>
+  <div class="threads" style="margin-bottom: 40px;">
+    <div class="thread thread-main">
+      <div class="thread-header">Hilo principal (UI)</div>
+      <div class="thread-body">
+        <div class="task task-main">Renderiza el mapa (Deck.gl 60fps)</div>
+        <div class="task task-main">Responde a clicks y zoom</div>
+        <div class="task task-main">Anima el spinner "Calculando..."</div>
+        <div class="task task-main">postMessage → Worker</div>
+        <div class="task task-main">Espera onmessage (no bloquea)</div>
+      </div>
+    </div>
+    <div class="thread thread-worker">
+      <div class="thread-header">Web Worker (hilo separado)</div>
+      <div class="thread-body">
+        <div class="task task-worker">Recibe ASSIGN_TERRITORIES</div>
+        <div class="task task-worker">Genera pares punto↔semilla</div>
+        <div class="task task-worker">Ordena y asigna greedy</div>
+        <div class="task task-worker">Calcula convex hull + buffer</div>
+        <div class="task task-worker">postMessage → TERRITORIES_READY</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MESSAGE BUS -->
+  <div class="bus">
+    <div class="bus-header">Canal de mensajes — postMessage / onmessage</div>
+
+    <div class="msg-row" style="background:#111827;">
+      <div class="msg-cell" style="color:#8892a4; font-size:.72rem; font-weight:700; text-transform:uppercase;">Mensaje</div>
+      <div class="msg-cell" style="color:#8892a4; font-size:.72rem; font-weight:700; text-transform:uppercase;">Quién lo envía</div>
+      <div class="msg-cell" style="color:#8892a4; font-size:.72rem; font-weight:700; text-transform:uppercase;">Payload</div>
+    </div>
+
+    <div class="msg-row">
+      <div class="msg-cell"><span class="msg-type dir-out">ASSIGN_TERRITORIES</span></div>
+      <div class="msg-cell">
+        <div class="msg-label">desde</div>
+        <div style="color:#c9d1d9;">useGeoData.ts → Worker</div>
+      </div>
+      <div class="msg-cell" style="color:#8892a4;">{ points[], params, allSellers[] }</div>
+    </div>
+
+    <div class="msg-row">
+      <div class="msg-cell"><span class="msg-type dir-in">TERRITORIES_READY</span></div>
+      <div class="msg-cell">
+        <div class="msg-label">desde</div>
+        <div style="color:#c9d1d9;">Worker → useGeoData.ts</div>
+      </div>
+      <div class="msg-cell" style="color:#8892a4;">{ vendedorId, points[], polygon }[]</div>
+    </div>
+
+    <div class="msg-row">
+      <div class="msg-cell"><span class="msg-type dir-out">FILTER_RADIUS</span></div>
+      <div class="msg-cell">
+        <div class="msg-label">desde</div>
+        <div style="color:#c9d1d9;">useGeoData.ts → Worker</div>
+      </div>
+      <div class="msg-cell" style="color:#8892a4;">{ points[], center[lon,lat], radiusKm }</div>
+    </div>
+
+    <div class="msg-row">
+      <div class="msg-cell"><span class="msg-type dir-in">FILTER_READY</span></div>
+      <div class="msg-cell">
+        <div class="msg-label">desde</div>
+        <div style="color:#c9d1d9;">Worker → useGeoData.ts</div>
+      </div>
+      <div class="msg-cell" style="color:#8892a4;">SalesPoint[] — solo los puntos dentro del radio</div>
+    </div>
+  </div>
+
+  <!-- CÓMO SE INSTANCIA -->
+  <div class="algo">
+    <div class="algo-header">
+      <div class="algo-title">Instanciación del Worker</div>
+      <span class="badge badge-green">useGeoData.ts : 29</span>
+    </div>
+    <div class="algo-body">
+      <p>El worker se crea al montar el hook con <code>import.meta.url</code> — Webpack 5 (incluido en Next.js) detecta este patrón y empaqueta el worker en un bundle separado automáticamente. Se termina en el cleanup del <code>useEffect</code>.</p>
+      <pre><span class="fn">useEffect</span>(() => {
+  workerRef.current = <span class="kw">new</span> <span class="fn">Worker</span>(
+    <span class="kw">new</span> <span class="fn">URL</span>(<span class="str">"../workers/geo.worker.ts"</span>, import.meta.url),
+    { type: <span class="str">"module"</span> }   <span class="cmt">// ← permite imports ES dentro del worker</span>
+  )
+
+  workerRef.current.<span class="fn">onmessage</span> = (e) => {
+    <span class="kw">const</span> { type, payload } = e.data
+    <span class="kw">if</span> (type === <span class="str">"TERRITORIES_READY"</span>) <span class="fn">saveTerritoriesFromWorker</span>(payload)
+    <span class="kw">if</span> (type === <span class="str">"FILTER_READY"</span>) {
+      <span class="kw">const</span> ids = <span class="kw">new</span> <span class="fn">Set</span>(payload.<span class="fn">map</span>(p => p.id))
+      <span class="fn">setState</span>((prev) => ({ ...prev, filteredIds: ids, isProcessing: <span class="bool">false</span> }))
+    }
+  }
+
+  <span class="kw">return</span> () => workerRef.current?.<span class="fn">terminate</span>()   <span class="cmt">// ← limpieza al desmontar</span>
+}, [])</pre>
+    </div>
+  </div>
+
+  <!-- ALGORITMO 1 -->
+  <div class="algo">
+    <div class="algo-header">
+      <div class="algo-title">Algoritmo 1 — ASSIGN_TERRITORIES</div>
+      <span class="badge badge-green">Greedy Nearest Neighbor</span>
+      <span class="algo-file">geo.worker.ts : 55</span>
+    </div>
+    <div class="algo-body">
+      <p>Asigna exactamente <code>pointsPerSeller</code> puntos a cada vendedor seleccionado sin solapamiento. No usa K-means porque K-means no tiene restricción de capacidad y produce clusters de tamaños desiguales.</p>
+
+      <div class="steps">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-text"><strong>Semillas aleatorias</strong> — <code>pickRandomSeeds(points, k)</code> elige k puntos reales del dataset como centros iniciales. Usa un <code>Set</code> para garantizar que no se repitan.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-text"><strong>Tabla de pares</strong> — doble bucle <code>O(n×k)</code> que calcula la distancia euclidiana al cuadrado entre cada punto y cada semilla. Con 18 763 puntos y 10 vendedores = 187 630 pares.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-text"><strong>Ordenación</strong> — <code>pairs.sort()</code> por distancia ascendente. <code>O(n·k · log(n·k))</code>. El par más corto queda primero.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-text"><strong>Greedy con cupo</strong> — recorre los pares ordenados. Un punto se asigna al primer vendedor que todavía tiene cupo. Si el punto ya fue tomado o el vendedor está lleno, se salta. Termina cuando todos los vendedores llegan a su cupo.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-text"><strong>Polígono</strong> — <code>buildPolygon()</code> llama a <code>turf.convex()</code> sobre los puntos asignados y le aplica un <code>turf.buffer(0.05 km)</code> para que el borde no corte puntos de borde.</div>
+        </div>
+      </div>
+
+      <pre><span class="cmt">// paso 2 y 3 — pares + ordenación</span>
+<span class="kw">const</span> pairs = []
+<span class="kw">for</span> (<span class="kw">let</span> pi = <span class="hl">0</span>; pi &lt; points.length; pi++) {
+  <span class="kw">for</span> (<span class="kw">let</span> si = <span class="hl">0</span>; si &lt; k; si++) {
+    <span class="kw">const</span> d = (points[pi].longitud - seeds[si].longitud) ** <span class="hl">2</span>
+             + (points[pi].latitud  - seeds[si].latitud)  ** <span class="hl">2</span>
+    pairs.<span class="fn">push</span>({ pi, si, dist: d })
+  }
+}
+pairs.<span class="fn">sort</span>((a, b) => a.dist - b.dist)
+
+<span class="cmt">// paso 4 — greedy con capacidad</span>
+<span class="kw">const</span> pointTaken    = <span class="kw">new</span> <span class="fn">Set</span>()
+<span class="kw">const</span> sellerCapacity = <span class="kw">new</span> <span class="fn">Array</span>(k).<span class="fn">fill</span>(pointsPerSeller)
+
+<span class="kw">for</span> (<span class="kw">const</span> { pi, si } <span class="kw">of</span> pairs) {
+  <span class="kw">if</span> (pointTaken.<span class="fn">has</span>(pi)) <span class="kw">continue</span>       <span class="cmt">// ya asignado</span>
+  <span class="kw">if</span> (sellerCapacity[si] &lt;= <span class="hl">0</span>) <span class="kw">continue</span>  <span class="cmt">// vendedor lleno</span>
+  pointTaken.<span class="fn">add</span>(pi)
+  sellerCapacity[si]--
+  sellerPoints[si].<span class="fn">push</span>(points[pi])
+}</pre>
+
+      <div class="cmp">
+        <div class="cmp-cell">
+          <div class="cmp-label">Complejidad tiempo</div>
+          <div class="cmp-val cmp-good">O(n·k · log(n·k))</div>
+        </div>
+        <div class="cmp-cell">
+          <div class="cmp-label">Sin Worker (bloqueo UI estimado)</div>
+          <div class="cmp-val cmp-bad">~400–900 ms frozen</div>
+        </div>
+        <div class="cmp-cell">
+          <div class="cmp-label">Con Worker</div>
+          <div class="cmp-val cmp-good">0 ms bloqueo en UI</div>
+        </div>
+        <div class="cmp-cell">
+          <div class="cmp-label">Garantía</div>
+          <div class="cmp-val" style="color:#e2e8f0;">Exactamente N puntos / vendedor</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALGORITMO 2 -->
+  <div class="algo">
+    <div class="algo-header">
+      <div class="algo-title">Algoritmo 2 — FILTER_RADIUS</div>
+      <span class="badge badge-purple">R-tree (rbush)</span>
+      <span class="algo-file">geo.worker.ts : 104</span>
+    </div>
+    <div class="algo-body">
+      <p>Filtra los puntos dentro de un radio en km desde un centro dado. Se activa cada vez que el usuario selecciona una ubicación en la barra de búsqueda.</p>
+
+      <div class="steps">
+        <div class="step-item">
+          <div class="step-num purple">1</div>
+          <div class="step-text"><strong>Construye el R-tree</strong> — <code>tree.load(points)</code> inserta los 18 763 puntos en el índice espacial de rbush. Bulk-load es <code>O(n log n)</code>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num purple">2</div>
+          <div class="step-text"><strong>Bounding box aproximado</strong> — convierte el radio en grados (<code>delta = radiusKm / 111</code>) y consulta el R-tree con ese bbox. Devuelve solo los candidatos dentro del cuadrado — <code>O(log n)</code>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num purple">3</div>
+          <div class="step-text"><strong>Distancia exacta</strong> — sobre los candidatos del bbox aplica <code>turf.distance()</code> para descartar los que quedan en las esquinas del cuadrado pero fuera del círculo real.</div>
+        </div>
+      </div>
+
+      <pre><span class="cmt">// paso 1 — índice R-tree</span>
+<span class="kw">const</span> tree = <span class="kw">new</span> <span class="fn">RBush</span>()
+tree.<span class="fn">load</span>(points.<span class="fn">map</span>(p => ({
+  minX: p.longitud, minY: p.latitud,
+  maxX: p.longitud, maxY: p.latitud,
+  id: p.id
+})))
+
+<span class="cmt">// paso 2 — bbox O(log n)</span>
+<span class="kw">const</span> delta      = radiusKm / <span class="hl">111</span>
+<span class="kw">const</span> candidates = tree.<span class="fn">search</span>({
+  minX: center[<span class="hl">0</span>] - delta, minY: center[<span class="hl">1</span>] - delta,
+  maxX: center[<span class="hl">0</span>] + delta, maxY: center[<span class="hl">1</span>] + delta,
+})
+
+<span class="cmt">// paso 3 — distancia exacta solo sobre candidatos</span>
+<span class="kw">const</span> filtered = candidates.<span class="fn">filter</span>(c => {
+  <span class="kw">const</span> dist = turf.<span class="fn">distance</span>(centerPt, turf.<span class="fn">point</span>([c.longitud, c.latitud]))
+  <span class="kw">return</span> dist &lt;= radiusKm
+})</pre>
+
+      <div class="cmp">
+        <div class="cmp-cell">
+          <div class="cmp-label">Sin R-tree (iteración lineal)</div>
+          <div class="cmp-val cmp-bad">O(n) — 18 763 distancias</div>
+        </div>
+        <div class="cmp-cell">
+          <div class="cmp-label">Con R-tree</div>
+          <div class="cmp-val cmp-good">O(log n) bbox + k distancias</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary">
+    <h2>Resumen — qué hace cada parte del Worker</h2>
+    <table>
+      <thead>
+        <tr><th>Archivo / línea</th><th>Función</th><th>Algoritmo</th><th>Librerías</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>useGeoData.ts : 29</td>
+          <td><strong>Instancia y escucha el Worker</strong></td>
+          <td>—</td>
+          <td>Web Worker API</td>
+        </tr>
+        <tr>
+          <td>geo.worker.ts : 55</td>
+          <td><strong>ASSIGN_TERRITORIES</strong> — asigna N puntos/vendedor</td>
+          <td>Greedy Nearest Neighbor + Convex Hull</td>
+          <td>Turf.js (convex, buffer)</td>
+        </tr>
+        <tr>
+          <td>geo.worker.ts : 104</td>
+          <td><strong>FILTER_RADIUS</strong> — puntos dentro de radio</td>
+          <td>R-tree + distancia exacta</td>
+          <td>rbush, Turf.js (distance)</td>
+        </tr>
+        <tr>
+          <td>geo.worker.ts : 32</td>
+          <td><strong>pickRandomSeeds</strong> — semillas del greedy</td>
+          <td>Muestreo aleatorio sin reemplazo</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>geo.worker.ts : 41</td>
+          <td><strong>buildPolygon</strong> — polígono del territorio</td>
+          <td>Convex hull + buffer 50 m</td>
+          <td>Turf.js (convex, buffer)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

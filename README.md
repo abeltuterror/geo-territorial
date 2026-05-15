@@ -14,15 +14,17 @@ Plataforma de segmentación y visualización de **18 763 puntos de venta** para 
 
 | Capa | Tecnología |
 |------|-----------|
-| Framework | Next.js 16 (App Router) |
+| Framework | Next.js 16 (App Router, Turbopack) |
 | Base de datos | PostgreSQL + PostGIS (Neon en prod) |
 | ORM | Prisma 6 |
-| Renderizado mapa | Deck.gl 9 (WebGL) |
-| Mapa base | MapLibre GL |
+| Validación API | Zod |
+| Data fetching | TanStack Query v5 |
+| Renderizado mapa | Deck.gl 9 (WebGL) — ScatterplotLayer + PolygonLayer |
+| Mapa base | MapLibre GL + react-map-gl |
 | Algoritmos geo | Turf.js + rbush |
 | Procesamiento pesado | Web Worker (`workers/geo.worker.ts`) |
-| Búsqueda | Google Places API (AutocompleteSuggestion) |
-| UI | React 19, Tailwind v4, TypeScript |
+| Búsqueda | Google Places API (`AutocompleteSuggestion` + `Place.fetchFields`) |
+| UI | React 19, Tailwind v4, Lucide icons, TypeScript |
 
 ---
 
@@ -36,15 +38,35 @@ npm install
 cp .env.example .env.local
 # Editar DATABASE_URL y NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
-# 3. Migraciones y seed de vendedores
+# 3. Migraciones y seed (90 vendedores + 18 763 puntos desde puntos.xlsx)
 npm run db:migrate
 npm run db:seed
 
-# 4. Cargar los 18 763 puntos de venta
-npx ts-node data-source/send.ts
-
-# 5. Servidor de desarrollo
+# 4. Servidor de desarrollo
 npm run dev
+```
+
+Para cargar puntos desde una fuente externa:
+```bash
+npx ts-node data_source/send.ts
+```
+
+---
+
+## Comandos disponibles
+
+```bash
+npm run dev          # Servidor de desarrollo (Turbopack)
+npm run build        # prisma generate + next build
+npm run db:migrate   # Aplica migraciones pendientes
+npm run db:seed      # Carga 90 vendedores + 18 763 puntos desde puntos.xlsx
+npm run db:studio    # Prisma Studio en http://localhost:5555
+```
+
+Para producción:
+```bash
+DATABASE_URL="postgresql://..." npx prisma migrate deploy
+DATABASE_URL="postgresql://..." npx prisma db seed
 ```
 
 ---
@@ -76,17 +98,19 @@ Esto garantiza exactamente **N puntos por vendedor** sin solapamiento, a diferen
 
 **Deck.gl 9** — Única opción que mantiene 60 fps con 18k+ geometrías con picking, tooltips y highlight interactivos.
 
-**MapLibre GL** — Fork open-source de Mapbox GL sin cuota de uso. Integración nativa con Deck.gl como base layer.
+**MapLibre GL + react-map-gl** — Fork open-source de Mapbox GL sin cuota de uso. Integración nativa con Deck.gl como base layer.
 
 **Turf.js** — Librería estándar de geoestadística en JS. Modular (tree-shakeable), no requiere servidor. Usada para convex hull, buffer y distancia exacta.
 
 **rbush** — La implementación R-tree más rápida en JS. Búsqueda O(log n) vs O(n) de iteración lineal — crítico para el filtro de radio sobre 18k puntos.
 
+**TanStack Query v5** — Cache, deduplicación y revalidación automática para las llamadas a `/api/points`, `/api/sellers` y `/api/territories`.
+
 **Next.js 16** — API serverless integrada (evita backend separado), Turbopack para dev rápido, App Router para layouts.
 
 **Prisma 6** — Tipado end-to-end generado desde el schema; migraciones declarativas; compatible con Neon serverless Postgres.
 
-**Google Places API (AutocompleteSuggestion)** — Cobertura completa de Lima y Perú. Se usa el nuevo API async/await (`AutocompleteSuggestion` + `Place.fetchFields`) en lugar del widget deprecado.
+**Google Places API (AutocompleteSuggestion)** — Cobertura completa de Lima y Perú. Se usa el nuevo API async/await (`AutocompleteSuggestion` + `Place.fetchFields`) en lugar del widget deprecado desde marzo 2025.
 
 ---
 
@@ -118,16 +142,31 @@ El enfoque actual falla en dos puntos con 500k puntos: la descarga inicial (~50 
 geo1/
 ├── app/
 │   ├── api/
-│   │   ├── points/route.ts        # GET + POST (carga masiva)
-│   │   ├── sellers/route.ts       # GET vendedores
-│   │   └── territories/route.ts   # GET / POST / DELETE
-│   └── page.tsx                   # Orquestador principal
+│   │   ├── points/route.ts          # GET + POST (carga masiva)
+│   │   ├── sellers/route.ts         # GET vendedores
+│   │   └── territories/route.ts    # GET / POST / DELETE
+│   ├── layout.tsx
+│   └── page.tsx                    # Orquestador principal
 ├── components/
-│   ├── map/GeoMap.tsx             # Deck.gl + MapLibre
-│   └── map/SearchBar.tsx          # Google Places Autocomplete
-├── workers/geo.worker.ts          # Clustering + filtro espacial
-├── lib/useGeoData.ts              # Hook central
-└── prisma/schema.prisma           # Modelos de datos
+│   ├── map/
+│   │   ├── GeoMap.tsx              # Deck.gl + MapLibre
+│   │   └── SearchBar.tsx           # Google Places Autocomplete
+│   └── sidebar/
+│       └── TerritoryPanel.tsx      # Panel de asignación de territorios
+├── data_source/
+│   ├── send.ts                     # Carga puntos vía API
+│   ├── send-geojson.ts             # Carga puntos en formato GeoJSON
+│   └── export.ts                   # Exporta datos
+├── lib/
+│   ├── db.ts                       # Cliente Prisma singleton
+│   ├── useGeoData.ts               # Hook central de datos
+│   └── utils.ts                    # Helpers
+├── prisma/
+│   ├── schema.prisma               # Modelos de datos
+│   ├── seed.ts                     # Seed vendedores + puntos
+│   └── data/puntos.xlsx            # Dataset fuente
+├── types/geo.ts                    # Tipos compartidos
+└── workers/geo.worker.ts           # Clustering + filtro espacial
 ```
 
 ---
@@ -136,5 +175,5 @@ geo1/
 
 ```bash
 DATABASE_URL="postgresql://user:pass@host/geo_territorial"
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""   # Requerida para SearchBar
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""   # Requerida para SearchBar; sin ella muestra aviso
 ```

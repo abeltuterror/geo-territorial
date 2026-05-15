@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Indicadores de Estado — Geo Territorial</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 40px 24px 80px;
+      font-size: 14px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #e2e8f0, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: #8892a4; margin-bottom: 48px; font-size: .9rem; }
+
+    .wrap { max-width: 780px; margin: 0 auto; }
+
+    /* ── State cards ── */
+    .states { display: flex; flex-direction: column; gap: 32px; }
+
+    .state-block {
+      border: 1px solid #2e3350;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .state-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #2e3350;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: .7rem;
+      font-weight: 700;
+    }
+    .badge-blocking  { background: #3d1010; color: #f87171; }
+    .badge-nonblock  { background: #1e3a5f; color: #4f8ef7; }
+    .badge-webgl     { background: #0d3325; color: #34d399; }
+
+    .state-title { font-weight: 700; font-size: 1rem; color: #e2e8f0; }
+    .state-file  { margin-left: auto; font-size: .72rem; font-family: monospace; color: #4f8ef7; }
+
+    .state-body { padding: 20px; background: #1a1d2e; display: flex; flex-direction: column; gap: 16px; }
+
+    .state-desc { color: #8892a4; font-size: .87rem; line-height: 1.7; }
+
+    /* trigger → effect rows */
+    .flow-row {
+      display: grid;
+      grid-template-columns: 1fr 32px 1fr;
+      gap: 0;
+      align-items: center;
+    }
+    .flow-box {
+      background: #0d1117;
+      border: 1px solid #2e3350;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: .82rem;
+    }
+    .flow-box .label { color: #8892a4; font-size: .68rem; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .flow-box .value { color: #c9d1d9; }
+    .flow-arrow { text-align: center; color: #4f8ef7; font-size: 1.1rem; }
+
+    pre {
+      background: #0d1117;
+      border: 1px solid #2e3350;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      overflow-x: auto;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cmt { color: #8b949e; }
+    .hl  { color: #fbbf24; }
+    .bool { color: #79c0ff; }
+
+    /* Visual mockup */
+    .mockup {
+      border: 1px solid #2e3350;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: .78rem;
+    }
+    .mockup-bar {
+      background: #111827;
+      padding: 6px 12px;
+      color: #6b7280;
+      font-size: .68rem;
+      border-bottom: 1px solid #2e3350;
+    }
+    .mockup-body {
+      background: #0d1117;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      gap: 10px;
+      color: #9ca3af;
+    }
+    .mockup-body.overlay {
+      background: rgba(13,17,23,0.85);
+      backdrop-filter: blur(4px);
+    }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid #374151;
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    .spinner.sm { width: 14px; height: 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .mockup-chip {
+      background: #1f2937cc;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #d1d5db;
+      font-size: .75rem;
+      backdrop-filter: blur(4px);
+    }
+    .mockup-btn {
+      background: #374151;
+      color: #6b7280;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: .8rem;
+      cursor: not-allowed;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mockup-btn-active {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    /* summary table */
+    .summary {
+      margin-top: 40px;
+      border: 1px solid #2e3350;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .summary h2 {
+      padding: 14px 20px;
+      font-size: .95rem;
+      font-weight: 700;
+      background: #1a1d2e;
+      border-bottom: 1px solid #2e3350;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { text-align: left; color: #8892a4; padding: 8px 16px; font-weight: 600; border-bottom: 1px solid #2e3350; background: #1a1d2e; }
+    td { padding: 10px 16px; color: #8892a4; border-bottom: 1px solid #2e3350; }
+    td:first-child { color: #a5d6ff; font-family: monospace; font-size: .8rem; }
+    tr:last-child td { border-bottom: none; }
+    td strong { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Indicadores de Estado</h1>
+  <p class="subtitle">Los tres estados de carga del sistema y cómo se comunican al usuario</p>
+
+  <div class="states">
+
+    <!-- ESTADO 1: isLoading -->
+    <div class="state-block">
+      <div class="state-header">
+        <div class="state-title">Estado 1 — Carga inicial</div>
+        <span class="badge badge-blocking">● Bloqueante</span>
+        <span class="state-file">page.tsx : 38</span>
+      </div>
+      <div class="state-body">
+        <p class="state-desc">
+          Al montar la app, <code>useGeoData</code> dispara tres <code>fetch</code> en paralelo con
+          <code>Promise.all</code>. Mientras no terminan los tres, <code>isLoading</code> vale
+          <code>true</code>. <code>page.tsx</code> detecta ese valor y devuelve una pantalla completa
+          en lugar del mapa — la UI entera está bloqueada hasta que los datos llegan.
+        </p>
+
+        <div class="flow-row">
+          <div class="flow-box">
+            <div class="label">Trigger</div>
+            <div class="value">fetch("/api/points"), fetch("/api/sellers"), fetch("/api/territories") — Promise.all</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="label">Efecto visual</div>
+            <div class="value">Pantalla completa reemplaza toda la UI</div>
+          </div>
+        </div>
+
+        <pre><span class="cmt">// useGeoData.ts — estado inicial</span>
+<span class="kw">const</span> [state, setState] = <span class="fn">useState</span>({
+  isLoading: <span class="bool">true</span>,   <span class="cmt">// ← arranca en true</span>
+  ...
+})
+
+<span class="cmt">// Al terminar los tres fetch:</span>
+<span class="fn">setState</span>((prev) => ({ ...prev, isLoading: <span class="bool">false</span> }))</pre>
+
+        <pre><span class="cmt">// page.tsx:38 — cortocircuito</span>
+<span class="kw">if</span> (isLoading) {
+  <span class="kw">return</span> (
+    &lt;<span class="fn">div</span> className=<span class="str">"w-screen h-screen flex items-center justify-center"</span>&gt;
+      &lt;<span class="fn">Loader2</span> className=<span class="str">"w-10 h-10 text-blue-400 animate-spin"</span> /&gt;
+      &lt;<span class="fn">p</span>&gt;Cargando 18,763 puntos de venta...&lt;/<span class="fn">p</span>&gt;
+    &lt;/<span class="fn">div</span>&gt;
+  )
+}  <span class="cmt">// ← el resto del componente nunca ejecuta</span></pre>
+
+        <!-- Mockup visual -->
+        <div class="mockup">
+          <div class="mockup-bar">pantalla completa — mapa no renderizado aún</div>
+          <div class="mockup-body" style="height:120px; flex-direction:column; gap:8px;">
+            <div class="spinner"></div>
+            <span style="color:#9ca3af; font-size:.8rem;">Cargando 18,763 puntos de venta...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTADO 2: isProcessing — overlay mapa -->
+    <div class="state-block">
+      <div class="state-header">
+        <div class="state-title">Estado 2 — Worker procesando</div>
+        <span class="badge badge-nonblock">● No bloqueante</span>
+        <span class="state-file">page.tsx : 76</span>
+      </div>
+      <div class="state-body">
+        <p class="state-desc">
+          Cuando el usuario pulsa "Generar territorios", el mensaje se envía al Web Worker.
+          <code>isProcessing</code> pasa a <code>true</code> mientras el worker calcula el clustering
+          en su hilo separado. El mapa sigue visible e interactivo — solo aparece un chip semitransparente
+          en la barra superior del mapa indicando que hay cálculo en curso.
+        </p>
+
+        <div class="flow-row">
+          <div class="flow-box">
+            <div class="label">Trigger</div>
+            <div class="value">worker.postMessage({ type: "ASSIGN_TERRITORIES" })</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="label">Efecto visual</div>
+            <div class="value">Chip con spinner sobre el mapa (no bloquea)</div>
+          </div>
+        </div>
+
+        <pre><span class="cmt">// useGeoData.ts</span>
+<span class="kw">const</span> assignTerritories = <span class="fn">useCallback</span>((params) => {
+  <span class="fn">setState</span>((prev) => ({ ...prev, isProcessing: <span class="bool">true</span> }))
+  workerRef.current.<span class="fn">postMessage</span>({ type: <span class="str">"ASSIGN_TERRITORIES"</span>, payload })
+}, [...])
+
+<span class="cmt">// Al recibir TERRITORIES_READY del worker:</span>
+<span class="fn">setState</span>((prev) => ({ ...prev, isProcessing: <span class="bool">false</span> }))</pre>
+
+        <pre><span class="cmt">// page.tsx:76 — chip no bloqueante</span>
+{isProcessing &amp;&amp; (
+  &lt;<span class="fn">div</span> className=<span class="str">"bg-gray-800/90 backdrop-blur-sm px-3 py-2 rounded-lg flex gap-2"</span>&gt;
+    &lt;<span class="fn">Loader2</span> className=<span class="str">"w-3.5 h-3.5 animate-spin"</span> /&gt;
+    Calculando territorios...
+  &lt;/<span class="fn">div</span>&gt;
+)}</pre>
+
+        <div class="mockup">
+          <div class="mockup-bar">barra superior del mapa — mapa sigue activo</div>
+          <div class="mockup-body overlay" style="height: 80px; justify-content: flex-start; padding: 16px;">
+            <div class="mockup-chip">
+              <div class="spinner sm"></div>
+              Calculando territorios...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTADO 3: isProcessing — botón panel -->
+    <div class="state-block">
+      <div class="state-header">
+        <div class="state-title">Estado 3 — Botón deshabilitado</div>
+        <span class="badge badge-nonblock">● No bloqueante</span>
+        <span class="state-file">TerritoryPanel.tsx : 88</span>
+      </div>
+      <div class="state-body">
+        <p class="state-desc">
+          El mismo flag <code>isProcessing</code> llega como prop a <code>TerritoryPanel</code>.
+          Mientras vale <code>true</code>, el botón "Generar territorios" se deshabilita con
+          <code>disabled</code>, cambia de color a gris y su texto muta a "Procesando..." para
+          evitar que el usuario envíe un segundo cálculo mientras el primero no terminó.
+        </p>
+
+        <div class="flow-row">
+          <div class="flow-box">
+            <div class="label">Trigger</div>
+            <div class="value">isProcessing === true (prop desde page.tsx)</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">
+            <div class="label">Efecto visual</div>
+            <div class="value">Botón gris + disabled + texto "Procesando..."</div>
+          </div>
+        </div>
+
+        <pre><span class="cmt">// TerritoryPanel.tsx</span>
+&lt;<span class="fn">button</span>
+  disabled={selectedSellerIds.size === <span class="hl">0</span> || isProcessing}
+  className={<span class="fn">cn</span>(
+    isProcessing
+      ? <span class="str">"bg-gray-700 text-gray-500 cursor-not-allowed"</span>
+      : <span class="str">"bg-blue-600 hover:bg-blue-500 text-white"</span>
+  )}
+&gt;
+  {isProcessing ? <span class="str">"Procesando..."</span> : <span class="str">"Generar territorios"</span>}
+&lt;/<span class="fn">button</span>&gt;</pre>
+
+        <div class="mockup">
+          <div class="mockup-bar">sidebar — botón según estado</div>
+          <div class="mockup-body" style="gap: 20px; justify-content: center; height: 80px;">
+            <div>
+              <div style="color:#6b7280; font-size:.68rem; margin-bottom:6px; text-align:center;">isProcessing = false</div>
+              <div class="mockup-btn mockup-btn-active">⚡ Generar territorios</div>
+            </div>
+            <div style="color:#374151; font-size:1.2rem;">→</div>
+            <div>
+              <div style="color:#6b7280; font-size:.68rem; margin-bottom:6px; text-align:center;">isProcessing = true</div>
+              <div class="mockup-btn">⚡ Procesando...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTADO 4: GeoMap SSR loading -->
+    <div class="state-block">
+      <div class="state-header">
+        <div class="state-title">Estado 4 — Hydration de GeoMap</div>
+        <span class="badge badge-webgl">● WebGL</span>
+        <span class="state-file">page.tsx : 12</span>
+      </div>
+      <div class="state-body">
+        <p class="state-desc">
+          Deck.gl usa WebGL y no puede ejecutarse en el servidor (SSR). Por eso
+          <code>GeoMap</code> se importa con <code>dynamic()</code> y <code>ssr: false</code>.
+          Mientras Next.js descarga e inicializa el bundle del mapa en el cliente,
+          el <code>loading</code> de <code>dynamic()</code> muestra un spinner en el área del mapa.
+          Este estado es independiente de los datos — ocurre por la carga del bundle JS.
+        </p>
+
+        <pre><span class="cmt">// page.tsx:12 — import dinámico sin SSR</span>
+<span class="kw">const</span> GeoMap = <span class="fn">dynamic</span>(
+  () => <span class="fn">import</span>(<span class="str">"@/components/map/GeoMap"</span>),
+  {
+    ssr: <span class="bool">false</span>,                     <span class="cmt">// ← WebGL no existe en Node</span>
+    loading: () => (
+      &lt;<span class="fn">div</span> className=<span class="str">"w-full h-full flex items-center justify-center"</span>&gt;
+        &lt;<span class="fn">Loader2</span> className=<span class="str">"w-8 h-8 text-blue-400 animate-spin"</span> /&gt;
+      &lt;/<span class="fn">div</span>&gt;
+    ),
+  }
+)</pre>
+      </div>
+    </div>
+
+  </div><!-- /states -->
+
+  <!-- Summary table -->
+  <div class="summary">
+    <h2>Resumen — los 4 indicadores</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Flag / mecanismo</th>
+          <th>Qué espera</th>
+          <th>Dónde aparece</th>
+          <th>Bloquea UI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>isLoading</td>
+          <td><strong>3 fetch iniciales</strong> (puntos, vendedores, territorios)</td>
+          <td>Pantalla completa</td>
+          <td style="color:#f87171">Sí</td>
+        </tr>
+        <tr>
+          <td>isProcessing (chip)</td>
+          <td><strong>Web Worker</strong> — algoritmo de asignación</td>
+          <td>Chip sobre el mapa</td>
+          <td style="color:#34d399">No</td>
+        </tr>
+        <tr>
+          <td>isProcessing (botón)</td>
+          <td><strong>Web Worker</strong> — mismo flag, distinto componente</td>
+          <td>Botón sidebar</td>
+          <td style="color:#34d399">No (solo deshabilita el botón)</td>
+        </tr>
+        <tr>
+          <td>dynamic loading</td>
+          <td><strong>Bundle de GeoMap</strong> — carga JS del mapa WebGL</td>
+          <td>Área del mapa</td>
+          <td style="color:#34d399">No</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

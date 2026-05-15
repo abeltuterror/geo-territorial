@@ -116,23 +116,128 @@ Esto garantiza exactamente **N puntos por vendedor** sin solapamiento, a diferen
 
 ## Escalabilidad a 500 000 puntos
 
-El enfoque actual falla en dos puntos con 500k puntos: la descarga inicial (~50 MB de JSON) y el cálculo greedy (500k × k pares). La estrategia de escala:
+Con 18 763 puntos el cálculo greedy y el filtro espacial corren en el navegador (Web Worker). Con 500k puntos ese enfoque falla en tres frentes:
 
-### Base de datos
-- Mover el clustering a **PostgreSQL + PostGIS** con `ST_ClusterKMeans` o `ST_ClusterDBSCAN`.
-- Índice GiST espacial para búsquedas por proximidad O(log n) en el servidor.
+| Problema | Con 18k (actual) | Con 500k |
+|----------|-----------------|----------|
+| Descarga inicial | ~2 MB JSON ✓ | ~50 MB JSON ✗ |
+| Cálculo greedy | 18k × k pares en Worker ✓ | 500k × k pares — varios segundos ✗ |
+| R-tree en memoria | ~5 MB RAM ✓ | ~130 MB RAM en el navegador ✗ |
 
-### Carga de datos
-- **Viewport-based loading**: la API devuelve solo los puntos dentro del bounding box visible.
-- **Vector Tiles (MVT)**: servir puntos como Mapbox Vector Tiles desde PostGIS (`ST_AsMVT`). Deck.gl los consume con `MVTLayer` — solo se descargan los tiles visibles.
+La solución es **mover el cálculo pesado al servidor** y **reemplazar la descarga masiva por tiles**.
 
-### Renderizado
-- **Supercluster** a zoom bajo: mostrar ~200 clusters con conteo en lugar de 500k puntos.
-- Al hacer zoom, revelar puntos individuales del tile actual.
+---
 
-### Procesamiento
-- **Worker Pool + SharedArrayBuffer**: múltiples workers en paralelo para el greedy.
-- **Redis** para cachear territorios calculados con los mismos parámetros.
+### Carga de datos — Vector Tiles (MVT)
+
+En lugar de descargar `GET /api/points` (array JSON completo), el frontend pide tiles por coordenada `{z}/{x}/{y}`. El servidor calcula qué puntos caen en ese tile y devuelve un binario comprimido.
+
+**Backend — nuevo endpoint tileado:**
+
+```ts
+// app/api/points/[z]/[x]/[y]/route.ts
+import { Pool } from "pg"
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+
+export async function GET(
+  _req: Request,
+  { params }: { params: { z: string; x: string; y: string } }
+) {
+  const { z, x, y } = params
+
+  const sql = `
+    WITH mvtgeom AS (
+      SELECT
+        ST_AsMVTGeom(
+          geom_3857,
+          ST_TileEnvelope($1, $2, $3),
+          extent => 4096, buffer => 64
+        ) AS geom,
+        id, nombre_cliente, monto_anual, territory_id, color
+      FROM puntos_venta
+      WHERE geom_3857 && ST_TileEnvelope($1, $2, $3, margin => (64.0/4096))
+    )
+    SELECT ST_AsMVT(mvtgeom, 'puntos_venta', 4096, 'geom') AS tile
+    FROM mvtgeom;
+  `
+
+  const result = await pool.query(sql, [z, x, y])
+  const tile = result.rows[0]?.tile
+
+  return new Response(tile || new Uint8Array(), {
+    headers: {
+      "Content-Type": "application/vnd.mapbox-vector-tile",
+      "Cache-Control": "public, max-age=60",
+    },
+  })
+}
+```
+
+`ST_TileEnvelope` calcula el bbox geográfico del tile. `ST_AsMVTGeom` recorta los puntos a ese bbox. `ST_AsMVT` serializa el resultado como binario Protobuf — solo viajan los puntos visibles en pantalla.
+
+**Tabla con índice espacial requerido:**
+
+```sql
+ALTER TABLE puntos_venta ADD COLUMN geom_3857 geometry(Point, 3857);
+UPDATE puntos_venta SET geom_3857 = ST_Transform(
+  ST_SetSRID(ST_MakePoint(longitud, latitud), 4326), 3857
+);
+CREATE INDEX puntos_venta_geom_3857_gix ON puntos_venta USING GIST (geom_3857);
+```
+
+**Frontend — reemplazar `ScatterplotLayer` por `MVTLayer`:**
+
+```ts
+// GeoMap.tsx — con 500k puntos
+import { MVTLayer } from "@deck.gl/geo-layers"
+
+const pointsLayer = useMemo(
+  () =>
+    new MVTLayer({
+      id: "sales-points",
+      data: "/api/points/{z}/{x}/{y}",   // URL templated — Deck.gl pide los tiles que necesita
+      pickable: true,
+      getPointRadius: 4,
+      pointRadiusMinPixels: 3,
+      pointRadiusMaxPixels: 12,
+      getFillColor: (f) => f.properties.color ?? [160, 160, 160, 180],
+      onClick: (info) => {
+        if (info.object) onPointClick?.(info.object.properties)
+      },
+    }),
+  [onPointClick]
+)
+```
+
+El frontend ya no recibe `points: SalesPoint[]`. Accede a los atributos desde `object.properties` dentro de cada feature del tile.
+
+---
+
+### Clustering server-side — PostGIS
+
+El algoritmo greedy del Web Worker se reemplaza por `ST_ClusterKMeans` en PostgreSQL:
+
+```sql
+SELECT vendedor_id, ST_ClusterKMeans(geom, k) OVER () AS cluster_id
+FROM puntos_venta;
+```
+
+El servidor tiene los 500k puntos con índice GiST — búsquedas O(log n). El cliente solo recibe los **polígonos finales**, no los puntos crudos.
+
+---
+
+### Renderizado — Supercluster a zoom bajo
+
+A zoom ciudad, mostrar 500k puntos individuales sobrecarga la GPU aunque sea con MVTLayer. La solución:
+
+- Zoom bajo → **Supercluster**: ~200 burbujas con conteo agregado.
+- Al hacer zoom → el tile siguiente ya contiene los puntos individuales del área visible.
+
+---
+
+### Cache — Redis
+
+Los territorios calculados se guardan en Redis con clave `hash(vendedores + N)`. Si los mismos parámetros ya fueron calculados, el servidor devuelve el resultado cacheado sin ejecutar el clustering de nuevo.
 
 ---
 
@@ -168,6 +273,59 @@ geo1/
 ├── types/geo.ts                    # Tipos compartidos
 └── workers/geo.worker.ts           # Clustering + filtro espacial
 ```
+
+---
+
+## Estructura del proyecto — versión 500 000 puntos
+
+Cambios respecto a la estructura actual: se elimina el Web Worker (el cálculo pasa al servidor), se agrega el endpoint tileado MVT, y se añaden la capa de cache Redis y el servicio de clustering PostGIS.
+
+```
+geo1/
+├── app/
+│   ├── api/
+│   │   ├── points/
+│   │   │   ├── route.ts                  # GET lista (reemplazado por tiles) + POST carga masiva
+│   │   │   └── [z]/[x]/[y]/route.ts     # ★ NUEVO — MVT tile endpoint (ST_AsMVT)
+│   │   ├── sellers/route.ts              # GET vendedores (sin cambios)
+│   │   └── territories/
+│   │       ├── route.ts                  # GET / DELETE (sin cambios)
+│   │       └── compute/route.ts         # ★ NUEVO — POST dispara ST_ClusterKMeans en PostGIS
+│   ├── layout.tsx
+│   └── page.tsx                         # Orquestador — ya no pasa points[] a GeoMap
+├── components/
+│   ├── map/
+│   │   ├── GeoMap.tsx                   # ★ MODIFICADO — MVTLayer reemplaza ScatterplotLayer
+│   │   └── SearchBar.tsx                # Sin cambios
+│   └── sidebar/
+│       └── TerritoryPanel.tsx           # Sin cambios
+├── lib/
+│   ├── db.ts                            # Cliente Prisma singleton
+│   ├── redis.ts                         # ★ NUEVO — cliente Redis para cache de territorios
+│   ├── tiles.ts                         # ★ NUEVO — helpers ST_TileEnvelope, bbox → sql
+│   └── utils.ts                         # Sin cambios
+├── prisma/
+│   ├── schema.prisma                    # ★ MODIFICADO — agrega geom_3857 + índice GiST
+│   ├── migrations/
+│   │   └── add_geom_3857/migration.sql  # ★ NUEVO — ALTER TABLE + CREATE INDEX GIST
+│   ├── seed.ts                          # Sin cambios
+│   └── data/puntos.xlsx                 # Sin cambios
+├── types/geo.ts                         # ★ MODIFICADO — MVTFeature en lugar de SalesPoint[]
+└── workers/
+    └── geo.worker.ts                    # ✕ ELIMINADO — clustering movido a PostGIS
+```
+
+### Qué desaparece y qué llega
+
+| Elemento | Antes (18k) | Después (500k) |
+|----------|-------------|----------------|
+| `GET /api/points` | Devuelve JSON array completo | Redirige o devuelve vacío |
+| `GET /api/points/{z}/{x}/{y}` | No existe | ★ Devuelve tile MVT binario |
+| `POST /api/territories` | Worker greedy en cliente | ★ `ST_ClusterKMeans` en servidor |
+| `workers/geo.worker.ts` | Greedy + R-tree en navegador | ✕ Eliminado |
+| `GeoMap.tsx` capa puntos | `ScatterplotLayer(data: points[])` | ★ `MVTLayer(data: "/api/points/{z}/{x}/{y}")` |
+| `useGeoData.ts` | Fetch + estado `points[]` | Solo fetch sellers y territories |
+| Cache | `Cache-Control: s-maxage=300` en HTTP | ★ Redis con clave `hash(params)` |
 
 ---
 

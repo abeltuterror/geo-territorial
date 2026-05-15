@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flujo de datos → ScatterplotLayer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 40px 24px 80px;
+      font-size: 14px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #e2e8f0, #4f8ef7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: #8892a4; margin-bottom: 48px; font-size: .9rem; }
+
+    /* ── Flow ── */
+    .flow { display: flex; flex-direction: column; gap: 0; max-width: 740px; margin: 0 auto; }
+
+    .step {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 0 24px;
+      position: relative;
+    }
+
+    /* vertical line */
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 199px;
+      top: 60px;
+      bottom: -24px;
+      width: 2px;
+      background: linear-gradient(to bottom, #2e3350, #2e3350);
+    }
+
+    .step + .step { margin-top: 24px; }
+
+    /* left: file label */
+    .file {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      padding-top: 14px;
+      gap: 4px;
+    }
+    .file-name {
+      font-size: .75rem;
+      font-weight: 700;
+      color: #4f8ef7;
+      font-family: 'Consolas', monospace;
+      text-align: right;
+    }
+    .file-type {
+      font-size: .68rem;
+      color: #8892a4;
+      text-align: right;
+    }
+
+    /* connector dot */
+    .dot {
+      position: absolute;
+      left: 193px;
+      top: 18px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #4f8ef7;
+      border: 2px solid #0f1117;
+      z-index: 1;
+    }
+
+    /* right: card */
+    .card {
+      background: #1a1d2e;
+      border: 1px solid #2e3350;
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+    .card-title {
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+      font-size: .9rem;
+    }
+    .card p { color: #8892a4; font-size: .85rem; line-height: 1.6; margin-bottom: 8px; }
+    .card p:last-child { margin-bottom: 0; }
+
+    pre {
+      background: #0d1117;
+      border: 1px solid #2e3350;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #c9d1d9;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cmt { color: #8b949e; }
+    .hl  { color: #fbbf24; }
+
+    .arrow {
+      text-align: center;
+      color: #2e3350;
+      font-size: 1.4rem;
+      margin: 4px 0 4px 224px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 20px;
+      font-size: .7rem;
+      font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .tag-db    { background: #0d3325; color: #34d399; }
+    .tag-api   { background: #1e3a5f; color: #4f8ef7; }
+    .tag-hook  { background: #2d1a4f; color: #c084fc; }
+    .tag-react { background: #3d2e00; color: #fbbf24; }
+    .tag-gpu   { background: #3d1010; color: #f87171; }
+
+    .final {
+      max-width: 740px;
+      margin: 40px auto 0;
+      background: #1a1d2e;
+      border: 1px solid #2e3350;
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+    .final h2 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: #e2e8f0; }
+    .final table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .final th { text-align: left; color: #8892a4; padding: 6px 10px; font-weight: 600; border-bottom: 1px solid #2e3350; }
+    .final td { padding: 8px 10px; color: #8892a4; border-bottom: 1px solid #2e3350; }
+    .final td:first-child { color: #a5d6ff; font-family: monospace; font-size: .8rem; }
+    .final tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<div style="max-width:740px;margin:0 auto 40px">
+  <h1>Flujo de datos → ScatterplotLayer</h1>
+  <p class="subtitle">Cómo viajan los 18 763 puntos desde PostgreSQL hasta la GPU</p>
+</div>
+
+<div class="flow">
+
+  <!-- 1. PostgreSQL -->
+  <div class="step">
+    <div class="file">
+      <div class="file-name">prisma/seed.ts</div>
+      <div class="file-type">carga inicial</div>
+    </div>
+    <div class="dot"></div>
+    <div class="card">
+      <div class="card-title">1. Origen — PostgreSQL <span class="tag tag-db">DB</span></div>
+      <p>Los 18 763 puntos y 90 vendedores se insertan en PostgreSQL mediante el seed. Quedan persistidos en la tabla <code>puntos_venta</code>. Esto ocurre una sola vez antes del deploy.</p>
+      <pre><span class="cmt">-- tabla puntos_venta</span>
+id | nombreCliente | latitud | longitud | montoAnual | territorioId</pre>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- 2. API Route -->
+  <div class="step">
+    <div class="file">
+      <div class="file-name">app/api/points/route.ts</div>
+      <div class="file-type">Next.js API Route</div>
+    </div>
+    <div class="dot"></div>
+    <div class="card">
+      <div class="card-title">2. API serverless — GET /api/points <span class="tag tag-api">API</span></div>
+      <p>El navegador hace <code>fetch('/api/points')</code>. La API Route consulta Prisma y devuelve el array JSON. Tiene <code>Cache-Control: s-maxage=300</code> para no re-consultar la DB en cada carga.</p>
+      <pre><span class="kw">const</span> points = <span class="kw">await</span> prisma.<span class="fn">puntoVenta</span>.<span class="fn">findMany</span>()
+<span class="cmt">// → SalesPoint[] como JSON</span></pre>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- 3. useGeoData -->
+  <div class="step">
+    <div class="file">
+      <div class="file-name">lib/useGeoData.ts</div>
+      <div class="file-type">React Hook</div>
+    </div>
+    <div class="dot"></div>
+    <div class="card">
+      <div class="card-title">3. Hook central <span class="tag tag-hook">Hook</span></div>
+      <p>Hace el <code>fetch</code> a <code>/api/points</code> y guarda el resultado en estado React. También gestiona la comunicación con el Web Worker y expone <code>filteredIds</code>.</p>
+      <pre><span class="kw">const</span> [points, setPoints] = <span class="fn">useState</span>&lt;<span class="hl">SalesPoint[]</span>&gt;([])
+
+<span class="fn">useEffect</span>(() => {
+  <span class="fn">fetch</span>(<span class="str">'/api/points'</span>)
+    .<span class="fn">then</span>(r => r.<span class="fn">json</span>())
+    .<span class="fn">then</span>(data => <span class="fn">setPoints</span>(data.points))
+}, [])</pre>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- 4. page.tsx -->
+  <div class="step">
+    <div class="file">
+      <div class="file-name">app/page.tsx</div>
+      <div class="file-type">Client Component</div>
+    </div>
+    <div class="dot"></div>
+    <div class="card">
+      <div class="card-title">4. Página principal <span class="tag tag-react">React</span></div>
+      <p>Recibe <code>points</code> y <code>filteredIds</code> del hook y los pasa como props a <code>GeoMap</code>.</p>
+      <pre>&lt;<span class="fn">GeoMap</span>
+  <span class="hl">points</span>={points}
+  territories={territories}
+  <span class="hl">filteredIds</span>={filteredIds}
+  center={mapCenter}
+/&gt;</pre>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- 5. GeoMap -->
+  <div class="step">
+    <div class="file">
+      <div class="file-name">components/map/GeoMap.tsx</div>
+      <div class="file-type">Deck.gl Component</div>
+    </div>
+    <div class="dot"></div>
+    <div class="card">
+      <div class="card-title">5. GeoMap — prepara los datos <span class="tag tag-react">React</span></div>
+      <p><code>visiblePoints</code> filtra los puntos según <code>filteredIds</code>. <code>territoryColorMap</code> construye un <code>Map&lt;id, [r,g,b]&gt;</code> para saber qué color asignar a cada punto.</p>
+      <pre><span class="kw">const</span> visiblePoints = <span class="fn">useMemo</span>(() =>
+  filteredIds ? points.<span class="fn">filter</span>(p => filteredIds.<span class="fn">has</span>(p.id)) : points
+, [points, filteredIds])
+
+<span class="kw">const</span> territoryColorMap = <span class="fn">useMemo</span>(() => {
+  <span class="kw">const</span> map = <span class="kw">new</span> <span class="fn">Map</span>()
+  territories.<span class="fn">forEach</span>(t =>
+    t.puntosVenta.<span class="fn">forEach</span>(sp => map.<span class="fn">set</span>(sp.id, <span class="fn">hexToRgb</span>(t.color)))
+  )
+  <span class="kw">return</span> map
+}, [territories])</pre>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <!-- 6. ScatterplotLayer -->
+  <div class="step">
+    <div class="file">
+      <div class="file-name">GeoMap.tsx</div>
+      <div class="file-type">Deck.gl → GPU</div>
+    </div>
+    <div class="dot" style="background:#f87171"></div>
+    <div class="card" style="border-color:#3d1010">
+      <div class="card-title">6. ScatterplotLayer — renderizado GPU <span class="tag tag-gpu">WebGL</span></div>
+      <p>Recibe <code>visiblePoints</code> como <code>data</code>. Deck.gl sube los datos a la GPU y ejecuta <code>getFillColor</code> y <code>getPosition</code> por cada punto en paralelo — el hilo principal de JS no itera nada.</p>
+      <pre><span class="kw">new</span> <span class="fn">ScatterplotLayer</span>({
+  data: <span class="hl">visiblePoints</span>,              <span class="cmt">// ← los puntos llegan aquí</span>
+  <span class="fn">getPosition</span>: d => [d.longitud, d.latitud],
+  <span class="fn">getFillColor</span>: d => {
+    <span class="kw">const</span> color = territoryColorMap.<span class="fn">get</span>(d.id)
+    <span class="kw">return</span> color
+      ? [...color, <span class="hl">220</span>]         <span class="cmt">// color del territorio</span>
+      : [<span class="hl">160</span>, <span class="hl">160</span>, <span class="hl">160</span>, <span class="hl">180</span>]    <span class="cmt">// gris si no tiene territorio</span>
+  },
+  updateTriggers: { <span class="fn">getFillColor</span>: [territoryColorMap] }
+})</pre>
+    </div>
+  </div>
+
+</div>
+
+<!-- Summary table -->
+<div class="final">
+  <h2>Resumen del viaje de un punto</h2>
+  <table>
+    <thead>
+      <tr><th>Paso</th><th>Archivo</th><th>Qué ocurre</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>prisma/seed.ts</td><td>Punto insertado en PostgreSQL desde Excel</td></tr>
+      <tr><td>2</td><td>api/points/route.ts</td><td>Prisma lo lee y lo devuelve como JSON</td></tr>
+      <tr><td>3</td><td>lib/useGeoData.ts</td><td>fetch lo guarda en estado React</td></tr>
+      <tr><td>4</td><td>app/page.tsx</td><td>Pasa el array como prop a GeoMap</td></tr>
+      <tr><td>5</td><td>GeoMap.tsx</td><td>Se filtra y se asigna color según territorio</td></tr>
+      <tr><td>6</td><td>ScatterplotLayer</td><td>Deck.gl lo sube a la GPU y lo dibuja como círculo</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

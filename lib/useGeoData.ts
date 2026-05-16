@@ -41,7 +41,11 @@ export function useGeoData() {
       const { type, payload } = e.data
       if (type === "TERRITORIES_READY") {
         setState((prev) => {
-          const colorOffset = prev.territories.length
+          // Persist colors: vendors with saved territories keep their existing color
+          const vendorColorMap = new Map<number, string>()
+          prev.territories.forEach((t) => vendorColorMap.set(t.vendedorId, t.color))
+
+          let nextColorIndex = prev.territories.length
           const pending: PendingAssignment[] = (
             payload as {
               vendedorId: number
@@ -49,11 +53,14 @@ export function useGeoData() {
               points: SalesPoint[]
               polygon: GeoJSON.Feature<GeoJSON.Polygon> | null
             }[]
-          ).map((a, idx) => ({
-            ...a,
-            colorIndex: colorOffset + idx,
-            color: getTerritoryColor(colorOffset + idx),
-          }))
+          ).map((a) => {
+            const existingColor = vendorColorMap.get(a.vendedorId)
+            if (existingColor) {
+              return { ...a, colorIndex: -1, color: existingColor }
+            }
+            const colorIndex = nextColorIndex++
+            return { ...a, colorIndex, color: getTerritoryColor(colorIndex) }
+          })
           return { ...prev, pendingAssignments: pending, isProcessing: false }
         })
       }
@@ -128,7 +135,7 @@ export function useGeoData() {
             vendedorId: a.vendedorId,
             pointIds: a.points.map((p) => p.id),
             geoJson: a.polygon,
-            colorIndex: a.colorIndex,
+            color: a.color,
           })),
         }),
       })

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Turf.js — Cómo se usa en el proyecto</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 40px 24px 80px;
+      font-size: 14px;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; }
+    h1 {
+      font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;
+      background: linear-gradient(135deg, #e2e8f0, #fb923c);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .subtitle { color: #8892a4; margin-bottom: 48px; font-size: .9rem; }
+
+    .section { margin-bottom: 36px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px;
+      background: #1a1d2e; border: 1px solid #2e3350;
+      border-radius: 12px 12px 0 0; border-bottom: none;
+    }
+    .section-body {
+      background: #111827; border: 1px solid #2e3350;
+      border-radius: 0 0 12px 12px; padding: 20px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .section-title { font-weight: 700; font-size: .95rem; }
+    .section-file  { margin-left: auto; font-size: .72rem; font-family: monospace; color: #4f8ef7; }
+    .badge {
+      padding: 2px 9px; border-radius: 20px;
+      font-size: .68rem; font-weight: 700;
+    }
+    .badge-orange { background: #431407; color: #fb923c; }
+    .badge-blue   { background: #1e3a5f; color: #4f8ef7; }
+    .badge-green  { background: #0d3325; color: #34d399; }
+
+    p { color: #8892a4; font-size: .87rem; line-height: 1.7; }
+
+    pre {
+      background: #0d1117; border: 1px solid #2e3350; border-radius: 8px;
+      padding: 12px 14px; font-family: 'Consolas', monospace;
+      font-size: 12px; line-height: 1.7; color: #c9d1d9; overflow-x: auto;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cmt { color: #8b949e; }
+    .hl  { color: #fbbf24; }
+
+    canvas { display: block; border-radius: 8px; background: #0a0e1a; }
+    .canvas-wrap {
+      background: #0d1117; border: 1px solid #2e3350;
+      border-radius: 10px; padding: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .canvas-label { font-size: .75rem; color: #8892a4; text-align: center; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab {
+      padding: 5px 13px; border-radius: 20px; font-size: .78rem; font-weight: 600;
+      cursor: pointer; border: 1px solid #2e3350; background: #1a1d2e; color: #8892a4;
+      transition: all .15s;
+    }
+    .tab.active { background: #fb923c22; border-color: #fb923c; color: #fb923c; }
+    .tab-desc {
+      background: #0d1117; border: 1px solid #2e3350; border-radius: 8px;
+      padding: 10px 14px; font-size: .83rem; color: #c9d1d9; line-height: 1.6;
+    }
+
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: .74rem; color: #8892a4; }
+    .leg-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .leg-line { width: 18px; height: 2px; flex-shrink: 0; border-radius: 2px; }
+    .leg-rect { width: 14px; height: 10px; border-radius: 2px; border: 1.5px solid; flex-shrink: 0; }
+
+    /* comparison grid */
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .cmp-box { background: #0d1117; border: 1px solid #2e3350; border-radius: 8px; padding: 14px; }
+    .cmp-title { font-size: .8rem; font-weight: 700; margin-bottom: 8px; }
+    .cmp-bad  .cmp-title { color: #f87171; }
+    .cmp-good .cmp-title { color: #34d399; }
+    .cmp-box code { font-family: monospace; font-size: .8rem; color: #fbbf24; }
+    .cmp-box p { font-size: .82rem; color: #8892a4; margin-top: 6px; }
+
+    /* summary table */
+    .summary { border: 1px solid #2e3350; border-radius: 12px; overflow: hidden; margin-top: 8px; }
+    .summary h2 { padding: 12px 20px; font-size: .9rem; font-weight: 700; background: #1a1d2e; border-bottom: 1px solid #2e3350; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { text-align: left; color: #8892a4; padding: 8px 16px; font-weight: 600; background: #1a1d2e; border-bottom: 1px solid #2e3350; }
+    td { padding: 10px 16px; color: #8892a4; border-bottom: 1px solid #2e3350; }
+    td:first-child { color: #fb923c; font-family: monospace; font-size: .8rem; }
+    tr:last-child td { border-bottom: none; }
+    td strong { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Turf.js en Geo Territorial</h1>
+  <p class="subtitle">Librería de cálculos geoespaciales — corre dentro del Web Worker, sin servidor</p>
+
+  <!-- FUNCIÓN 1: convex hull -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">1. turf.convex() — Convex Hull</div>
+      <span class="badge badge-orange">geo.worker.ts : 46</span>
+      <span class="section-file">buildPolygon()</span>
+    </div>
+    <div class="section-body">
+      <p>Recibe los puntos asignados a un vendedor y devuelve el polígono más pequeño que los encierra a todos. Es como tensar una banda elástica alrededor de los puntos — la forma que queda es el convex hull.</p>
+
+      <div class="tabs">
+        <div class="tab active" onclick="setConvex(0)">Solo puntos</div>
+        <div class="tab" onclick="setConvex(1)">Convex hull</div>
+        <div class="tab" onclick="setConvex(2)">+ Buffer 50m</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="convexCanvas" width="760" height="280"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="leg-dot" style="background:#fbbf24"></div> Puntos del vendedor</div>
+          <div class="legend-item"><div class="leg-line" style="background:#4f8ef7"></div> Convex hull</div>
+          <div class="legend-item"><div class="leg-line" style="background:#34d399"></div> Buffer +50m</div>
+        </div>
+        <div class="tab-desc" id="convexDesc">Los puntos asignados al vendedor, sin polígono todavía.</div>
+      </div>
+
+      <pre><span class="cmt">// geo.worker.ts:41 — buildPolygon()</span>
+<span class="kw">const</span> fc = turf.<span class="fn">featureCollection</span>(
+  points.<span class="fn">map</span>(p => turf.<span class="fn">point</span>([p.longitud, p.latitud]))
+)
+<span class="kw">const</span> hull = turf.<span class="fn">convex</span>(fc)        <span class="cmt">// ← polígono más pequeño</span>
+<span class="kw">if</span> (!hull) <span class="kw">return</span> <span class="hl">null</span>              <span class="cmt">// menos de 3 puntos → no hay polígono</span></pre>
+    </div>
+  </div>
+
+  <!-- FUNCIÓN 2: buffer -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">2. turf.buffer() — Expandir polígono</div>
+      <span class="badge badge-orange">geo.worker.ts : 48</span>
+      <span class="section-file">buildPolygon()</span>
+    </div>
+    <div class="section-body">
+      <p>Expande el convex hull 50 metros hacia afuera. Sin el buffer, los puntos del borde del territorio quedarían exactamente en el filo del polígono y visualmente parecería que están fuera. El buffer los deja claramente dentro.</p>
+
+      <div class="compare">
+        <div class="cmp-box cmp-bad">
+          <div class="cmp-title">Sin buffer</div>
+          <canvas id="noBufferCanvas" width="340" height="180"></canvas>
+          <p>Los puntos del borde tocan el filo del polígono.</p>
+        </div>
+        <div class="cmp-box cmp-good">
+          <div class="cmp-title">Con buffer (0.05 km)</div>
+          <canvas id="bufferCanvas" width="340" height="180"></canvas>
+          <p>El polígono se expande 50 m — todos los puntos quedan dentro con margen.</p>
+        </div>
+      </div>
+
+      <pre><span class="cmt">// geo.worker.ts:48</span>
+<span class="kw">return</span> turf.<span class="fn">buffer</span>(hull, <span class="hl">0.05</span>, { units: <span class="str">"kilometers"</span> })
+<span class="cmt">//                   ↑ 50 metros</span></pre>
+    </div>
+  </div>
+
+  <!-- FUNCIÓN 3: distance -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">3. turf.distance() — Distancia exacta</div>
+      <span class="badge badge-green">geo.worker.ts : 133</span>
+      <span class="section-file">FILTER_RADIUS</span>
+    </div>
+    <div class="section-body">
+      <p>Calcula la distancia real en kilómetros entre dos coordenadas usando la fórmula Haversine — que tiene en cuenta la curvatura de la Tierra. Se usa en el filtro de radio para descartar los puntos que pasaron el bbox del R-tree pero están fuera del círculo real.</p>
+
+      <div class="canvas-wrap">
+        <canvas id="distCanvas" width="760" height="260"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="leg-dot" style="background:#4f8ef7"></div> Centro (búsqueda)</div>
+          <div class="legend-item"><div class="leg-dot" style="background:#34d399"></div> Dentro del radio ✓</div>
+          <div class="legend-item"><div class="leg-dot" style="background:#f87171"></div> Fuera del radio ✗ (pasó el bbox)</div>
+          <div class="legend-item"><div class="leg-dot" style="background:#4b5563"></div> Fuera del bbox</div>
+        </div>
+        <div class="canvas-label">turf.distance() solo se llama sobre los puntos amarillos candidatos del R-tree — no sobre los 18 763.</div>
+      </div>
+
+      <pre><span class="cmt">// geo.worker.ts:129</span>
+<span class="kw">const</span> centerPt = turf.<span class="fn">point</span>(center)
+
+<span class="kw">const</span> filtered = candidates.<span class="fn">filter</span>(c => {
+  <span class="kw">const</span> dist = turf.<span class="fn">distance</span>(
+    centerPt,
+    turf.<span class="fn">point</span>([c.longitud, c.latitud]),
+    { units: <span class="str">"kilometers"</span> }
+  )
+  <span class="kw">return</span> dist &lt;= radiusKm   <span class="cmt">// ← descarta esquinas del bbox</span>
+})</pre>
+
+      <div class="compare">
+        <div class="cmp-box cmp-bad">
+          <div class="cmp-title">Distancia euclidiana (incorrecta)</div>
+          <code>√((x2-x1)² + (y2-y1)²)</code>
+          <p>Trata las coordenadas como un plano plano. En Lima introduce error de ~2–5 km en distancias de 10 km.</p>
+        </div>
+        <div class="cmp-box cmp-good">
+          <div class="cmp-title">Haversine — turf.distance()</div>
+          <code>2r·arcsin(√(sin²(Δlat/2)+cos·sin²(Δlon/2)))</code>
+          <p>Tiene en cuenta la curvatura de la Tierra. Resultado exacto en km independiente de la latitud.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUNCIÓN 4: point / featureCollection -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">4. turf.point() y turf.featureCollection() — Convertir datos</div>
+      <span class="badge badge-blue">GeoJSON helpers</span>
+      <span class="section-file">geo.worker.ts</span>
+    </div>
+    <div class="section-body">
+      <p>Turf trabaja con objetos GeoJSON. Estas dos funciones convierten los datos del proyecto al formato que Turf entiende.</p>
+
+      <pre><span class="cmt">// SalesPoint → GeoJSON Point</span>
+turf.<span class="fn">point</span>([p.longitud, p.latitud])
+<span class="cmt">// → { type: "Feature", geometry: { type: "Point", coordinates: [-77.03, -12.04] } }</span>
+
+<span class="cmt">// Array de puntos → GeoJSON FeatureCollection</span>
+turf.<span class="fn">featureCollection</span>([pt1, pt2, pt3, ...])
+<span class="cmt">// → { type: "FeatureCollection", features: [...] }</span>
+<span class="cmt">// requerido por turf.convex()</span></pre>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary">
+    <h2>Resumen — las 4 funciones de Turf usadas</h2>
+    <table>
+      <thead>
+        <tr><th>Función</th><th>Dónde</th><th>Para qué</th><th>Input → Output</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>turf.convex()</td>
+          <td><strong>buildPolygon()</strong></td>
+          <td>Polígono del territorio</td>
+          <td>FeatureCollection → Polygon</td>
+        </tr>
+        <tr>
+          <td>turf.buffer()</td>
+          <td><strong>buildPolygon()</strong></td>
+          <td>Expande 50 m el borde</td>
+          <td>Polygon → Polygon más grande</td>
+        </tr>
+        <tr>
+          <td>turf.distance()</td>
+          <td><strong>FILTER_RADIUS</strong></td>
+          <td>Distancia exacta Haversine</td>
+          <td>Point, Point → número km</td>
+        </tr>
+        <tr>
+          <td>turf.point()</td>
+          <td><strong>Ambos</strong></td>
+          <td>Convierte [lon, lat] a GeoJSON</td>
+          <td>[lon, lat] → Feature&lt;Point&gt;</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ── Shared RNG ───────────────────────────────────────────────────────────────
+function rng(seed) {
+  let s = seed
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646 }
+}
+
+// ── Convex Hull demo ─────────────────────────────────────────────────────────
+const convexPts = (() => {
+  const r = rng(55)
+  const cx = 380, cy = 140
+  return Array.from({ length: 22 }, () => ({
+    x: cx + (r() - 0.5) * 340,
+    y: cy + (r() - 0.5) * 200,
+  }))
+})()
+
+function convexHull(pts) {
+  const sorted = [...pts].sort((a, b) => a.x - b.x || a.y - b.y)
+  const cross = (O, A, B) => (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x)
+  const lower = [], upper = []
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop()
+    lower.push(p)
+  }
+  for (const p of [...sorted].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop()
+    upper.push(p)
+  }
+  upper.pop(); lower.pop()
+  return [...lower, ...upper]
+}
+
+function expandHull(hull, amount) {
+  const cx = hull.reduce((s,p)=>s+p.x,0)/hull.length
+  const cy = hull.reduce((s,p)=>s+p.y,0)/hull.length
+  return hull.map(p => {
+    const dx = p.x - cx, dy = p.y - cy
+    const len = Math.sqrt(dx*dx + dy*dy)
+    return { x: p.x + (dx/len)*amount, y: p.y + (dy/len)*amount }
+  })
+}
+
+const hull = convexHull(convexPts)
+const buffered = expandHull(hull, 18)
+
+const convexDescs = [
+  'Los 22 puntos asignados al vendedor. Aún no hay polígono de territorio.',
+  'turf.convex() calcula el polígono más pequeño que encierra todos los puntos — como tensar una banda elástica.',
+  'turf.buffer(hull, 0.05) expande el polígono 50 m. Los puntos del borde quedan claramente dentro.'
+]
+
+function drawConvex(step) {
+  const cv = document.getElementById('convexCanvas')
+  const ctx = cv.getContext('2d')
+  ctx.clearRect(0, 0, cv.width, cv.height)
+
+  if (step >= 2) {
+    ctx.beginPath()
+    buffered.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
+    ctx.closePath()
+    ctx.fillStyle = '#34d39912'
+    ctx.strokeStyle = '#34d39988'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([5,3])
+    ctx.fill(); ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  if (step >= 1) {
+    ctx.beginPath()
+    hull.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
+    ctx.closePath()
+    ctx.fillStyle = '#4f8ef710'
+    ctx.strokeStyle = '#4f8ef799'
+    ctx.lineWidth = 1.5
+    ctx.fill(); ctx.stroke()
+  }
+
+  convexPts.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2)
+    ctx.fillStyle = '#fbbf24cc'; ctx.fill()
+  })
+}
+
+function setConvex(n) {
+  document.querySelectorAll('.tabs')[0].querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===n))
+  document.getElementById('convexDesc').textContent = convexDescs[n]
+  drawConvex(n)
+}
+setConvex(0)
+
+// ── Buffer comparison ────────────────────────────────────────────────────────
+function drawBufferCompare() {
+  const r = rng(88)
+  const pts = Array.from({ length: 10 }, () => ({ x: 30+r()*280, y: 20+r()*140 }))
+  const h = convexHull(pts)
+  const hb = expandHull(h, 14)
+
+  function draw(id, showBuffer) {
+    const cv = document.getElementById(id)
+    if (!cv) return
+    const ctx = cv.getContext('2d')
+    ctx.clearRect(0, 0, cv.width, cv.height)
+
+    if (showBuffer) {
+      ctx.beginPath()
+      hb.forEach((p,i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
+      ctx.closePath()
+      ctx.fillStyle = '#34d39910'; ctx.strokeStyle = '#34d39966'
+      ctx.lineWidth = 1.5; ctx.setLineDash([4,3])
+      ctx.fill(); ctx.stroke(); ctx.setLineDash([])
+    }
+
+    ctx.beginPath()
+    h.forEach((p,i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))
+    ctx.closePath()
+    ctx.fillStyle = '#4f8ef710'; ctx.strokeStyle = '#4f8ef799'
+    ctx.lineWidth = 1.5; ctx.fill(); ctx.stroke()
+
+    pts.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2)
+      ctx.fillStyle = '#fbbf24cc'; ctx.fill()
+    })
+  }
+
+  draw('noBufferCanvas', false)
+  draw('bufferCanvas', true)
+}
+drawBufferCompare()
+
+// ── Distance / filter canvas ─────────────────────────────────────────────────
+function drawDist() {
+  const cv = document.getElementById('distCanvas')
+  const ctx = cv.getContext('2d')
+  const W = cv.width, H = cv.height
+  const cx = W/2, cy = H/2, r = 90
+
+  const pts = (() => {
+    const rr = rng(33)
+    return Array.from({ length: 80 }, () => ({
+      x: cx - 130 + rr()*(r*2+80),
+      y: cy - 130 + rr()*(r*2+80)
+    }))
+  })()
+
+  pts.forEach(p => {
+    const dx = p.x-cx, dy = p.y-cy
+    const dist = Math.sqrt(dx*dx+dy*dy)
+    const inBbox = Math.abs(dx)<=r && Math.abs(dy)<=r
+    const inCircle = dist<=r
+    let color = '#4b556355'
+    if (inCircle) color = '#34d399cc'
+    else if (inBbox) color = '#f87171cc'
+    ctx.beginPath(); ctx.arc(p.x,p.y,3.5,0,Math.PI*2)
+    ctx.fillStyle = color; ctx.fill()
+  })
+
+  // bbox
+  ctx.strokeStyle = '#4f8ef755'; ctx.lineWidth = 1
+  ctx.setLineDash([4,3])
+  ctx.beginPath(); ctx.rect(cx-r,cy-r,r*2,r*2); ctx.stroke()
+  ctx.setLineDash([])
+
+  // circle
+  ctx.strokeStyle = '#34d39966'; ctx.lineWidth = 1.5
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
+
+  // distance lines to a few candidates
+  pts.filter(p=>{
+    const dx=p.x-cx,dy=p.y-cy
+    return Math.abs(dx)<=r&&Math.abs(dy)<=r&&Math.sqrt(dx*dx+dy*dy)>r
+  }).slice(0,3).forEach(p=>{
+    ctx.strokeStyle = '#f8717144'; ctx.lineWidth = 1
+    ctx.setLineDash([2,3])
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke()
+    ctx.setLineDash([])
+    const mx=(cx+p.x)/2, my=(cy+p.y)/2
+    ctx.font='10px Consolas'; ctx.fillStyle='#f87171'
+    ctx.fillText('> 3km', mx+4, my)
+  })
+
+  pts.filter(p=>{
+    const dx=p.x-cx,dy=p.y-cy
+    return Math.sqrt(dx*dx+dy*dy)<=r
+  }).slice(0,2).forEach(p=>{
+    ctx.strokeStyle = '#34d39944'; ctx.lineWidth = 1
+    ctx.setLineDash([2,3])
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke()
+    ctx.setLineDash([])
+    const mx=(cx+p.x)/2, my=(cy+p.y)/2
+    ctx.font='10px Consolas'; ctx.fillStyle='#34d399'
+    ctx.fillText('≤ 3km ✓', mx+4, my)
+  })
+
+  // center
+  ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2)
+  ctx.fillStyle='#4f8ef7'; ctx.fill()
+  ctx.font='11px Segoe UI'; ctx.fillStyle='#4f8ef7'
+  ctx.fillText('centro', cx+10, cy-6)
+}
+drawDist()
+</script>
+</body>
+</html>

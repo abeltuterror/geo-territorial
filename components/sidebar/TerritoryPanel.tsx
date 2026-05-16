@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Users, MapPin, Zap, Trash2, ChevronDown, ChevronUp, Save, X } from "lucide-react"
+import { Users, MapPin, Zap, Trash2, ChevronDown, ChevronUp, Save, X, Layers } from "lucide-react"
 import type { Seller, Territory, TerritoryAssignmentParams, PendingAssignment } from "@/types/geo"
 import { cn, formatCurrency } from "@/lib/utils"
 
@@ -35,6 +35,7 @@ export default function TerritoryPanel({
   const [selectedSellerIds, setSelectedSellerIds] = useState<Set<number>>(new Set())
   const [pointsPerSeller, setPointsPerSeller] = useState(200)
   const [showSellers, setShowSellers] = useState(true)
+  const [openBadgeSeller, setOpenBadgeSeller] = useState<number | null>(null)
 
   const toggleSeller = (id: number) => {
     setSelectedSellerIds((prev) => {
@@ -78,6 +79,15 @@ export default function TerritoryPanel({
     const colors = new Map<number, string>()
     territories.forEach((t) => colors.set(t.vendedorId, t.color))
     return colors
+  }, [territories])
+
+  // Number of saved polygons per seller
+  const sellerPolygonCount = useMemo(() => {
+    const counts = new Map<number, number>()
+    territories.forEach((t) => {
+      counts.set(t.vendedorId, (counts.get(t.vendedorId) ?? 0) + 1)
+    })
+    return counts
   }, [territories])
 
   const totalToAssign = selectedSellerIds.size * pointsPerSeller
@@ -227,6 +237,7 @@ export default function TerritoryPanel({
               const savedCount = sellerSavedTotals.get(seller.id) ?? 0
               const pendingCount = sellerPendingTotals.get(seller.id) ?? 0
               const dotColor = sellerLatestColor.get(seller.id)
+              const polygonCount = sellerPolygonCount.get(seller.id) ?? 0
               return (
                 <li
                   key={seller.id}
@@ -250,9 +261,48 @@ export default function TerritoryPanel({
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-gray-200 text-xs font-medium truncate">
-                      {seller.nombreCompleto}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-gray-200 text-xs font-medium truncate">
+                        {seller.nombreCompleto}
+                      </p>
+                      {polygonCount > 0 && (
+                        <span
+                          className="flex items-center gap-0.5 shrink-0 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded px-1 py-0.5 text-[10px] font-semibold cursor-pointer relative"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenBadgeSeller(openBadgeSeller === seller.id ? null : seller.id)
+                          }}
+                        >
+                          <Layers className="w-2.5 h-2.5" />
+                          {polygonCount}
+                          {openBadgeSeller === seller.id && (
+                            <div className="absolute left-0 top-5 z-20 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-40 text-left">
+                              <p className="text-gray-400 text-[10px] uppercase font-semibold mb-2">
+                                Resumen del vendedor
+                              </p>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-400">Polígonos</span>
+                                <span className="text-white font-medium">{polygonCount}</span>
+                              </div>
+                              <div className="flex justify-between text-xs mb-2">
+                                <span className="text-gray-400">Total clientes</span>
+                                <span className="text-green-400 font-medium">{savedCount.toLocaleString()}</span>
+                              </div>
+                              <div className="border-t border-gray-700 pt-2 space-y-1">
+                                {territories
+                                  .filter((t) => t.vendedorId === seller.id)
+                                  .map((t) => (
+                                    <div key={t.id} className="flex justify-between text-[10px]">
+                                      <span className="text-gray-300 truncate max-w-24">{t.nombre}</span>
+                                      <span className="text-gray-500 shrink-0 ml-2">{t.puntosVenta.length} cli.</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </span>
+                      )}
+                    </div>
                     {(savedCount > 0 || pendingCount > 0) && (
                       <p className="text-gray-500 text-xs">
                         {savedCount > 0 && (

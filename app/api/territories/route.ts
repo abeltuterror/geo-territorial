@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
-import { getTerritoryColor } from "@/lib/utils"
 
 const CreateTerritoriesSchema = z.object({
   assignments: z.array(
@@ -9,7 +8,7 @@ const CreateTerritoriesSchema = z.object({
       vendedorId: z.number(),
       pointIds: z.array(z.string()),
       geoJson: z.any(),
-      colorIndex: z.number(),
+      color: z.string(),
     })
   ),
 })
@@ -52,7 +51,7 @@ export async function POST(req: Request) {
           data: {
             vendedorId: a.vendedorId,
             nombre: `Territorio ${existingCount + idx + 1}`,
-            color: getTerritoryColor(a.colorIndex),
+            color: a.color,
             geoJson: a.geoJson,
           },
         })

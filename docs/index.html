@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geo Territorial — Documentación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f6f8fb;
+      --surface:   #ffffff;
+      --border:    #e2e8f0;
+      --text:      #1e293b;
+      --muted:     #64748b;
+      --accent:    #4f46e5;
+      --accent-lt: #eef2ff;
+      --green:     #059669;
+      --green-lt:  #d1fae5;
+      --red:       #dc2626;
+      --red-lt:    #fee2e2;
+      --code-bg:   #1e1e2e;
+      --code-text: #cdd6f4;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      font-size: 0.95rem;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #7c3aed 100%);
+      color: #fff;
+      padding: 3.5rem 2rem 3rem;
+      text-align: center;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.25em 0.9em;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero p {
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.82);
+      max-width: 600px;
+      margin: 0 auto 1.8rem;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 0.6rem 1.4rem;
+      text-align: center;
+    }
+
+    .stat-num {
+      display: block;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .stat-lbl {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.75;
+    }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      max-width: 1080px;
+      margin: 2.5rem auto;
+      gap: 2rem;
+      padding: 0 1.5rem;
+      align-items: start;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+    }
+
+    nav p {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      padding: 0.3rem 0.5rem;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    nav a:hover {
+      background: var(--accent-lt);
+      color: var(--accent);
+    }
+
+    /* ── CONTENT ── */
+    .content { min-width: 0; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.8rem 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 .icon {
+      width: 28px; height: 28px;
+      background: var(--accent-lt);
+      color: var(--accent);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.4rem 0 0.5rem;
+    }
+
+    p { margin-bottom: 0.9rem; color: var(--text); }
+    p:last-child { margin-bottom: 0; }
+
+    strong { color: var(--accent); font-weight: 600; }
+
+    /* ── TABLE ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin: 0.5rem 0 1rem;
+    }
+
+    thead tr {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    th {
+      padding: 0.6rem 1rem;
+      font-weight: 600;
+      text-align: left;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+    }
+
+    td {
+      padding: 0.55rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--accent-lt); }
+
+    /* ── CODE ── */
+    code {
+      font-family: "JetBrains Mono", monospace;
+      background: #f1f5f9;
+      color: #7c3aed;
+      border-radius: 5px;
+      padding: 0.1em 0.4em;
+      font-size: 0.83em;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border-radius: 10px;
+      padding: 1.3rem 1.5rem;
+      overflow-x: auto;
+      margin: 0.8rem 0 1.2rem;
+      position: relative;
+    }
+
+    pre code {
+      background: none;
+      color: var(--code-text);
+      padding: 0;
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+
+    pre::before {
+      content: attr(data-lang);
+      position: absolute;
+      top: 0.6rem;
+      right: 1rem;
+      font-size: 0.65rem;
+      font-family: "JetBrains Mono", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6c7086;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2em;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15em 0.55em;
+      border-radius: 999px;
+      vertical-align: middle;
+    }
+
+    .badge-new  { background: var(--accent-lt); color: var(--accent); }
+    .badge-mod  { background: #fef3c7; color: #92400e; }
+    .badge-del  { background: var(--red-lt);   color: var(--red); }
+    .badge-ok   { background: var(--green-lt); color: var(--green); }
+
+    /* ── NOTE / ALERT ── */
+    .note {
+      background: var(--accent-lt);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 0.85rem 1.1rem;
+      font-size: 0.88rem;
+      color: #3730a3;
+      margin: 0.5rem 0 1rem;
+    }
+
+    /* ── STEP LIST ── */
+    .steps { list-style: none; counter-reset: steps; padding: 0; }
+
+    .steps li {
+      counter-increment: steps;
+      display: flex;
+      gap: 0.8rem;
+      align-items: flex-start;
+      margin-bottom: 0.6rem;
+    }
+
+    .steps li::before {
+      content: counter(steps);
+      min-width: 24px; height: 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 0.15rem;
+    }
+
+    /* ── STACK CARDS ── */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .stack-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 0.7rem 0.9rem;
+    }
+
+    .stack-item .layer {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .stack-item .tech {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    /* ── COMPARISON TABLE ── */
+    .check { color: var(--green); font-weight: 700; }
+    .cross  { color: var(--red);   font-weight: 700; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 2rem 1rem 3rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 720px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; }
+      .hero h1 { font-size: 1.9rem; }
+      .stack-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Plataforma Geoespacial</div>
+  <h1>Geo Territorial</h1>
+  <p>Segmentación y visualización de puntos de venta para equipos comerciales en Lima. Clustering espacial + renderizado WebGL a 60 fps.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">18 763</span><span class="stat-lbl">Puntos de venta</span></div>
+    <div class="stat"><span class="stat-num">90</span><span class="stat-lbl">Vendedores</span></div>
+    <div class="stat"><span class="stat-num">60 fps</span><span class="stat-lbl">Renderizado WebGL</span></div>
+    <div class="stat"><span class="stat-num">O(log n)</span><span class="stat-lbl">Filtro espacial</span></div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- NAV -->
+  <nav>
+    <p>Contenido</p>
+    <a href="#stack">Stack</a>
+    <a href="#quickstart">Inicio rápido</a>
+    <a href="#commands">Comandos</a>
+    <a href="#strategy">Estrategia 18k+</a>
+    <a href="#libs">Librerías</a>
+    <a href="#scale">Escalabilidad 500k</a>
+    <a href="#structure">Estructura</a>
+    <a href="#structure500">Estructura 500k</a>
+    <a href="#env">Variables de entorno</a>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- STACK -->
+    <div class="card" id="stack">
+      <h2><span class="icon">⚡</span> Stack tecnológico</h2>
+      <div class="stack-grid">
+        <div class="stack-item"><div class="layer">Framework</div><div class="tech">Next.js 16 — App Router</div></div>
+        <div class="stack-item"><div class="layer">Base de datos</div><div class="tech">PostgreSQL + PostGIS</div></div>
+        <div class="stack-item"><div class="layer">ORM</div><div class="tech">Prisma 6</div></div>
+        <div class="stack-item"><div class="layer">Validación API</div><div class="tech">Zod</div></div>
+        <div class="stack-item"><div class="layer">Data fetching</div><div class="tech">TanStack Query v5</div></div>
+        <div class="stack-item"><div class="layer">Mapa (GPU)</div><div class="tech">Deck.gl 9 — WebGL</div></div>
+        <div class="stack-item"><div class="layer">Mapa base</div><div class="tech">MapLibre GL</div></div>
+        <div class="stack-item"><div class="layer">Algoritmos geo</div><div class="tech">Turf.js + rbush</div></div>
+        <div class="stack-item"><div class="layer">Procesamiento</div><div class="tech">Web Worker</div></div>
+        <div class="stack-item"><div class="layer">Búsqueda</div><div class="tech">Google Places API</div></div>
+        <div class="stack-item"><div class="layer">UI</div><div class="tech">React 19 + Tailwind v4</div></div>
+        <div class="stack-item"><div class="layer">Lenguaje</div><div class="tech">TypeScript</div></div>
+      </div>
+    </div>
+
+    <!-- DEMO -->
+    <div class="card">
+      <h2><span class="icon">🚀</span> Demo</h2>
+      <div class="note">Enlace de despliegue en Vercel: <em>(agregar URL tras deploy)</em></div>
+    </div>
+
+    <!-- QUICKSTART -->
+    <div class="card" id="quickstart">
+      <h2><span class="icon">▶</span> Inicio rápido</h2>
+      <pre data-lang="bash"><code># 1. Instalar dependencias
+npm install
+
+# 2. Variables de entorno
+cp .env.example .env.local
+# Editar DATABASE_URL y NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+
+# 3. Migraciones y seed (90 vendedores + 18 763 puntos)
+npm run db:migrate
+npm run db:seed
+
+# 4. Servidor de desarrollo
+npm run dev</code></pre>
+      <p>Para cargar puntos desde una fuente externa:</p>
+      <pre data-lang="bash"><code>npx ts-node data_source/send.ts</code></pre>
+    </div>
+
+    <!-- COMMANDS -->
+    <div class="card" id="commands">
+      <h2><span class="icon">$</span> Comandos disponibles</h2>
+      <pre data-lang="bash"><code>npm run dev          # Servidor de desarrollo (Turbopack)
+npm run build        # prisma generate + next build
+npm run db:migrate   # Aplica migraciones pendientes
+npm run db:seed      # Carga 90 vendedores + 18 763 puntos desde puntos.xlsx
+npm run db:studio    # Prisma Studio en http://localhost:5555</code></pre>
+      <p>Para producción:</p>
+      <pre data-lang="bash"><code>DATABASE_URL="postgresql://..." npx prisma migrate deploy
+DATABASE_URL="postgresql://..." npx prisma db seed</code></pre>
+    </div>
+
+    <!-- STRATEGY -->
+    <div class="card" id="strategy">
+      <h2><span class="icon">🗺</span> Estrategia para 18 000+ puntos</h2>
+
+      <h3>Renderizado GPU — Deck.gl</h3>
+      <p>Los 18 763 puntos se renderizan en la GPU mediante <code>ScatterplotLayer</code>. Un solo draw call por frame garantiza 60 fps con todos los puntos visibles; el hilo principal nunca itera sobre ellos.</p>
+
+      <h3>Procesamiento off-thread — Web Worker</h3>
+      <p>El algoritmo de asignación y el filtro espacial corren en <code>workers/geo.worker.ts</code>. La UI no se bloquea durante el cálculo.</p>
+
+      <h3>Índice espacial — R-tree (rbush)</h3>
+      <p>El filtro de radio construye un R-tree con todos los puntos. La búsqueda por bounding box es O(log n); la distancia exacta con Turf.js se aplica solo sobre los candidatos del bbox.</p>
+
+      <h3>Algoritmo de asignación — Greedy con capacidad fija</h3>
+      <ol class="steps">
+        <li>Se eligen <strong>k semillas aleatorias</strong> de puntos reales del dataset.</li>
+        <li>Se calculan todos los pares punto↔semilla y se ordenan por distancia euclidiana.</li>
+        <li>Asignación greedy: cada punto va al vendedor más cercano con cupo disponible.</li>
+      </ol>
+      <p style="margin-top:0.8rem;">Garantiza exactamente <strong>N puntos por vendedor</strong> sin solapamiento — K-means estándar no tiene restricción de capacidad.</p>
+
+      <h3>Cache HTTP</h3>
+      <p><code>/api/points</code> responde con <code>Cache-Control: s-maxage=300</code>. El cache de 5 minutos elimina carga innecesaria a la base de datos en recargas.</p>
+    </div>
+
+    <!-- LIBS -->
+    <div class="card" id="libs">
+      <h2><span class="icon">📦</span> Librerías y justificación</h2>
+      <table>
+        <thead><tr><th>Librería</th><th>Justificación</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Deck.gl 9</strong></td><td>Única opción que mantiene 60 fps con 18k+ geometrías con picking, tooltips y highlight.</td></tr>
+          <tr><td><strong>MapLibre GL</strong></td><td>Fork open-source de Mapbox GL sin cuota. Integración nativa con Deck.gl como base layer.</td></tr>
+          <tr><td><strong>Turf.js</strong></td><td>Estándar de geoestadística JS. Modular (tree-shakeable), sin servidor. Convex hull, buffer, distancia.</td></tr>
+          <tr><td><strong>rbush</strong></td><td>R-tree más rápido en JS. O(log n) vs O(n) lineal — crítico sobre 18k puntos.</td></tr>
+          <tr><td><strong>TanStack Query v5</strong></td><td>Cache, deduplicación y revalidación automática para las tres rutas API.</td></tr>
+          <tr><td><strong>Next.js 16</strong></td><td>API serverless integrada, Turbopack, App Router — evita backend separado.</td></tr>
+          <tr><td><strong>Prisma 6</strong></td><td>Tipado end-to-end desde el schema; migraciones declarativas; compatible con Neon.</td></tr>
+          <tr><td><strong>Google Places API</strong></td><td>Cobertura completa de Lima. Usa el nuevo API async/await; widget deprecado desde mar 2025.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SCALE -->
+    <div class="card" id="scale">
+      <h2><span class="icon">📈</span> Escalabilidad a 500 000 puntos</h2>
+      <table>
+        <thead><tr><th>Problema</th><th>Con 18k (actual)</th><th>Con 500k</th></tr></thead>
+        <tbody>
+          <tr><td>Descarga inicial</td><td><span class="check">✓</span> ~2 MB JSON</td><td><span class="cross">✗</span> ~50 MB JSON</td></tr>
+          <tr><td>Cálculo greedy</td><td><span class="check">✓</span> 18k × k pares en Worker</td><td><span class="cross">✗</span> 500k × k pares — varios segundos</td></tr>
+          <tr><td>R-tree en memoria</td><td><span class="check">✓</span> ~5 MB RAM</td><td><span class="cross">✗</span> ~130 MB RAM en navegador</td></tr>
+        </tbody>
+      </table>
+
+      <p>La solución: <strong>mover el cálculo al servidor</strong> + <strong>reemplazar la descarga masiva por tiles MVT</strong>.</p>
+
+      <h3>Carga de datos — Vector Tiles (MVT)</h3>
+      <p>En lugar de <code>GET /api/points</code> con JSON completo, el frontend pide tiles por <code>{z}/{x}/{y}</code>. Solo viajan los puntos visibles en pantalla.</p>
+      <pre data-lang="typescript"><code>// app/api/points/[z]/[x]/[y]/route.ts
+export async function GET(_req, { params }) {
+  const { z, x, y } = params
+  const sql = `
+    WITH mvtgeom AS (
+      SELECT ST_AsMVTGeom(geom_3857, ST_TileEnvelope($1,$2,$3), 4096, 64) AS geom,
+             id, nombre_cliente, monto_anual, territory_id, color
+      FROM puntos_venta
+      WHERE geom_3857 &amp;&amp; ST_TileEnvelope($1,$2,$3, margin =&gt; 64.0/4096)
+    )
+    SELECT ST_AsMVT(mvtgeom, 'puntos_venta', 4096, 'geom') AS tile
+    FROM mvtgeom;
+  `
+  const result = await pool.query(sql, [z, x, y])
+  return new Response(result.rows[0]?.tile ?? new Uint8Array(), {
+    headers: { "Content-Type": "application/vnd.mapbox-vector-tile" }
+  })
+}</code></pre>
+
+      <h3>Clustering server-side — PostGIS</h3>
+      <pre data-lang="sql"><code>SELECT vendedor_id, ST_ClusterKMeans(geom, k) OVER () AS cluster_id
+FROM puntos_venta;</code></pre>
+
+      <h3>Comparativa de cambios</h3>
+      <table>
+        <thead><tr><th>Elemento</th><th>Antes (18k)</th><th>Después (500k)</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /api/points</code></td><td>JSON array completo</td><td>Redirige / vacío</td></tr>
+          <tr><td><code>GET /api/points/{z}/{x}/{y}</code></td><td>No existe</td><td><span class="badge badge-new">NUEVO</span> Tile MVT binario</td></tr>
+          <tr><td><code>POST /api/territories</code></td><td>Worker greedy en cliente</td><td><span class="badge badge-new">NUEVO</span> <code>ST_ClusterKMeans</code></td></tr>
+          <tr><td><code>geo.worker.ts</code></td><td>Greedy + R-tree en navegador</td><td><span class="badge badge-del">ELIMINADO</span></td></tr>
+          <tr><td>Capa puntos — GeoMap</td><td><code>ScatterplotLayer</code></td><td><span class="badge badge-mod">MODIFICADO</span> <code>MVTLayer</code></td></tr>
+          <tr><td><code>useGeoData.ts</code></td><td>Fetch + estado <code>points[]</code></td><td><span class="badge badge-mod">MODIFICADO</span> Solo sellers + territories</td></tr>
+          <tr><td>Cache</td><td><code>Cache-Control: s-maxage=300</code></td><td><span class="badge badge-new">NUEVO</span> Redis + hash(params)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- STRUCTURE -->
+    <div class="card" id="structure">
+      <h2><span class="icon">🗂</span> Estructura del proyecto</h2>
+      <pre data-lang="tree"><code>geo1/
+├── app/
+│   ├── api/
+│   │   ├── points/route.ts          # GET + POST (carga masiva)
+│   │   ├── sellers/route.ts         # GET vendedores
+│   │   └── territories/route.ts    # GET / POST / DELETE
+│   ├── layout.tsx
+│   └── page.tsx                    # Orquestador principal
+├── components/
+│   ├── map/
+│   │   ├── GeoMap.tsx              # Deck.gl + MapLibre
+│   │   └── SearchBar.tsx           # Google Places Autocomplete
+│   └── sidebar/
+│       └── TerritoryPanel.tsx      # Panel de asignación
+├── data_source/
+│   ├── send.ts                     # Carga puntos vía API
+│   ├── send-geojson.ts             # Carga puntos en GeoJSON
+│   └── export.ts                   # Exporta datos
+├── lib/
+│   ├── db.ts                       # Cliente Prisma singleton
+│   ├── useGeoData.ts               # Hook central de datos
+│   └── utils.ts                    # Helpers
+├── prisma/
+│   ├── schema.prisma               # Modelos de datos
+│   ├── seed.ts                     # Seed vendedores + puntos
+│   └── data/puntos.xlsx            # Dataset fuente
+├── types/geo.ts                    # Tipos compartidos
+└── workers/geo.worker.ts           # Clustering + filtro espacial</code></pre>
+    </div>
+
+    <!-- STRUCTURE 500k -->
+    <div class="card" id="structure500">
+      <h2><span class="icon">🗂</span> Estructura — versión 500 000 puntos</h2>
+      <p>Se elimina el Web Worker, se agrega el endpoint MVT tileado, y se añaden cache Redis y clustering PostGIS.</p>
+      <pre data-lang="tree"><code>geo1/
+├── app/
+│   ├── api/
+│   │   ├── points/
+│   │   │   ├── route.ts                  # GET lista + POST carga masiva
+│   │   │   └── [z]/[x]/[y]/route.ts     # ★ NUEVO — MVT tile (ST_AsMVT)
+│   │   ├── sellers/route.ts              # Sin cambios
+│   │   └── territories/
+│   │       ├── route.ts                  # GET / DELETE (sin cambios)
+│   │       └── compute/route.ts         # ★ NUEVO — ST_ClusterKMeans
+│   ├── layout.tsx
+│   └── page.tsx                         # Ya no pasa points[] a GeoMap
+├── components/
+│   ├── map/
+│   │   ├── GeoMap.tsx                   # ★ MODIFICADO — MVTLayer
+│   │   └── SearchBar.tsx                # Sin cambios
+│   └── sidebar/
+│       └── TerritoryPanel.tsx           # Sin cambios
+├── lib/
+│   ├── db.ts                            # Sin cambios
+│   ├── redis.ts                         # ★ NUEVO — cache de territorios
+│   ├── tiles.ts                         # ★ NUEVO — helpers ST_TileEnvelope
+│   └── utils.ts                         # Sin cambios
+├── prisma/
+│   ├── schema.prisma                    # ★ MODIFICADO — geom_3857 + GiST
+│   ├── migrations/
+│   │   └── add_geom_3857/migration.sql  # ★ NUEVO
+│   ├── seed.ts                          # Sin cambios
+│   └── data/puntos.xlsx                 # Sin cambios
+├── types/geo.ts                         # ★ MODIFICADO — MVTFeature
+└── workers/
+    └── geo.worker.ts                    # ✕ ELIMINADO</code></pre>
+    </div>
+
+    <!-- ENV -->
+    <div class="card" id="env">
+      <h2><span class="icon">🔑</span> Variables de entorno</h2>
+      <pre data-lang="bash"><code>DATABASE_URL="postgresql://user:pass@host/geo_territorial"
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""   # Requerida para SearchBar</code></pre>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /layout -->
+
+<footer>
+  Geo Territorial &mdash; Documentación técnica
+</footer>
+
+</body>
+</html>

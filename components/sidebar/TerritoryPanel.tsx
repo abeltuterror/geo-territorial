@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { Users, MapPin, Zap, Trash2, ChevronDown, ChevronUp, Save, X, Layers } from "lucide-react"
 import type { Seller, Territory, TerritoryAssignmentParams, PendingAssignment } from "@/types/geo"
 import { cn, formatCurrency } from "@/lib/utils"
@@ -36,6 +37,27 @@ export default function TerritoryPanel({
   const [pointsPerSeller, setPointsPerSeller] = useState(200)
   const [showSellers, setShowSellers] = useState(true)
   const [openBadgeSeller, setOpenBadgeSeller] = useState<number | null>(null)
+  const [badgePopupPos, setBadgePopupPos] = useState<{ top: number; left: number } | null>(null)
+  const handleBadgeClick = useCallback((e: React.MouseEvent, sellerId: number) => {
+    e.stopPropagation()
+    if (openBadgeSeller === sellerId) {
+      setOpenBadgeSeller(null)
+      setBadgePopupPos(null)
+      return
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const popupWidth = 192
+    const left = Math.min(rect.left, window.innerWidth - popupWidth - 8)
+    setBadgePopupPos({ top: rect.bottom + 4, left })
+    setOpenBadgeSeller(sellerId)
+  }, [openBadgeSeller])
+
+  useEffect(() => {
+    if (openBadgeSeller === null) return
+    const close = () => { setOpenBadgeSeller(null); setBadgePopupPos(null) }
+    document.addEventListener("click", close)
+    return () => document.removeEventListener("click", close)
+  }, [openBadgeSeller])
 
   const toggleSeller = (id: number) => {
     setSelectedSellerIds((prev) => {
@@ -267,39 +289,11 @@ export default function TerritoryPanel({
                       </p>
                       {polygonCount > 0 && (
                         <span
-                          className="flex items-center gap-0.5 shrink-0 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded px-1 py-0.5 text-[10px] font-semibold cursor-pointer relative"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setOpenBadgeSeller(openBadgeSeller === seller.id ? null : seller.id)
-                          }}
+                          className="flex items-center gap-0.5 shrink-0 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded px-1 py-0.5 text-[10px] font-semibold cursor-pointer"
+                          onClick={(e) => handleBadgeClick(e, seller.id)}
                         >
                           <Layers className="w-2.5 h-2.5" />
                           {polygonCount}
-                          {openBadgeSeller === seller.id && (
-                            <div className="absolute left-0 top-5 z-20 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 min-w-40 text-left">
-                              <p className="text-gray-400 text-[10px] uppercase font-semibold mb-2">
-                                Resumen del vendedor
-                              </p>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span className="text-gray-400">Polígonos</span>
-                                <span className="text-white font-medium">{polygonCount}</span>
-                              </div>
-                              <div className="flex justify-between text-xs mb-2">
-                                <span className="text-gray-400">Total clientes</span>
-                                <span className="text-green-400 font-medium">{savedCount.toLocaleString()}</span>
-                              </div>
-                              <div className="border-t border-gray-700 pt-2 space-y-1">
-                                {territories
-                                  .filter((t) => t.vendedorId === seller.id)
-                                  .map((t) => (
-                                    <div key={t.id} className="flex justify-between text-[10px]">
-                                      <span className="text-gray-300 truncate max-w-24">{t.nombre}</span>
-                                      <span className="text-gray-500 shrink-0 ml-2">{t.puntosVenta.length} cli.</span>
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
                         </span>
                       )}
                     </div>
@@ -399,6 +393,42 @@ export default function TerritoryPanel({
           </div>
         </div>
       )}
+
+      {openBadgeSeller !== null && badgePopupPos && (() => {
+        const seller = sellers.find((s) => s.id === openBadgeSeller)
+        if (!seller) return null
+        const polygonCount = sellerPolygonCount.get(seller.id) ?? 0
+        const savedCount = sellerSavedTotals.get(seller.id) ?? 0
+        const sellerTerritories = territories.filter((t) => t.vendedorId === seller.id)
+        return createPortal(
+          <div
+            className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-3 w-48 text-left"
+            style={{ top: badgePopupPos.top, left: badgePopupPos.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-gray-400 text-[10px] uppercase font-semibold mb-2">
+              Resumen del vendedor
+            </p>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-gray-400">Polígonos</span>
+              <span className="text-white font-medium">{polygonCount}</span>
+            </div>
+            <div className="flex justify-between text-xs mb-2">
+              <span className="text-gray-400">Total clientes</span>
+              <span className="text-green-400 font-medium">{savedCount.toLocaleString()}</span>
+            </div>
+            <div className="border-t border-gray-700 pt-2 space-y-1">
+              {sellerTerritories.map((t) => (
+                <div key={t.id} className="flex justify-between text-[10px]">
+                  <span className="text-gray-300 truncate max-w-28">{t.nombre}</span>
+                  <span className="text-gray-500 shrink-0 ml-2">{t.puntosVenta.length} cli.</span>
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )
+      })()}
     </aside>
   )
 }
